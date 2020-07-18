@@ -1,0 +1,6 @@
+
+
+```{r}
+data = read_csv("parkinsons_updrs.csv")
+```
+
