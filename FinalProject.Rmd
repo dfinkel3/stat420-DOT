@@ -1,3 +1,14 @@
+---
+title: "Final Project"
+author: "Daniil Finkel, Omar Boffil, Albert Ferguson"
+date: '07/18/2020'
+output:
+  html_document:
+    theme: readable
+    toc: yes
+  pdf_document: default
+urlcolor: cyan
+---
 
 #### Team DOT:
 - Daniilf2 - Daniil Finkel
@@ -38,6 +49,6 @@ We have successfully loaded the data into R. A preview of the data is below:
 ```{r}
 library(readr)
 data = read_csv("parkinsons_updrs.csv")
-head(data)
+head(data$total_UPDRS)
 ```
 
