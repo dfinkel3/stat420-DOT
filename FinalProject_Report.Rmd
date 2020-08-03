@@ -1,0 +1,146 @@
+---
+title: "FinalProject_Report"
+author: "Daniil Finkel, Omar Boffil, Albert Ferguson"
+date: "August 2, 2020"
+output:
+  html_document:
+    theme: readable
+    toc: yes
+  pdf_document: default
+urlcolor: cyan
+---
+
+#### Team DOT:
+- Daniilf2 - Daniil Finkel
+- Oboffil2 - Omar Boffil
+- Albertf2 - Albert Ferguson
+
+# STAT 420: Final Project
+## Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Biomedical Voice Measurements of Individuals with Early Stage Parkinson’s Disease
+
+### Introduction
+
+Our chosen data file contains 22 attributes of 5875 observations. The attributes are:
+
+- subject# - Integer that uniquely identifies each subject
+- age - Subject age
+- sex - Subject gender '0' - male, '1' - female
+- test_time - Time since recruitment into the trial. The integer part is the
+- number of days since recruitment.
+- motor_UPDRS - Clinician's motor UPDRS score, linearly interpolated
+- total_UPDRS - Clinician's total UPDRS score, linearly interpolated
+- Jitter(%),Jitter(Abs),Jitter:RAP,Jitter:PPQ5,Jitter:DDP - Several measures of
+- variation in fundamental frequency
+- Shimmer,Shimmer(dB),Shimmer:APQ3,Shimmer:APQ5,Shimmer:APQ11,Shimmer:DDA
+- Several measures of variation in amplitude
+- NHR,HNR - Two measures of ratio of noise to tonal components in the voice
+- RPDE - A nonlinear dynamical complexity measure
+- DFA - Signal fractal scaling exponent
+- PPE - A nonlinear measure of fundamental frequency variation
+
+The dataset was created in collaboration by Intel, Oxford and several medical centers to study patient Parkinson’s progression. 
+
+The data set is provided by UCI, available here:  
+https://archive.ics.uci.edu/ml/datasets/Parkinsons+Telemonitoring
+
+Recently, machine learning has seen significantly more use in healthcare. Through this project and dataset, we seek to get a better understanding of just how and why machine learning pairs so well with medical data.
+
+We have successfully loaded the data into R. A preview of the data is below:
+
+```{r, message = FALSE}
+library(readr)
+parkins = read_csv("parkinsons_updrs.csv")
+```
+
+The "\`subject#\`" column is a unique identifier we don't need for modeling, so we will remove it.
+```{r}
+parkins = subset(parkins, select = -c(`subject#`))
+```
+
+We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
+```{r}
+set.seed(420)
+park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
+park_trn_data = parkins[park_trn_idx, ]
+park_tst_data = parkins[-park_trn_idx, ]
+```
+
+
+### Methods
+
+#### Helper functions:
+
+We first create a suite of helper functions to more easily evaluate our models.
+
+```{r, message = FALSE, warning = FALSE}
+
+library(lmtest)
+
+get_bp = function(model) {
+  unname(bptest(model)$p.value)
+}
+
+get_sw = function(model) {
+  unname(shapiro.test(resid(model))$p.value)
+}
+
+get_num_params = function(model) {
+  length(coef(model))
+}
+
+get_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2))
+}
+
+get_adj_r2 = function(model) {
+  summary(model)$adj.r.squared
+}
+
+eval_model = function(model){
+  list(bp = get_bp(model),
+       sw = get_sw(model),
+       rmse = get_loocv_rmse(model),
+       adj_r2 = get_adj_r2(model),
+       num_p = get_num_params(model))
+}
+
+diagnostics = function(model, pcol="grey", lcol="dodgerblue", alpha=0.05, plotit=TRUE, testit=TRUE){
+  if(plotit){
+    par(mfrow = c(1,2))
+    plot(fitted(model), resid(model), col = pcol, 
+         xlab = "Fitted", ylab = "Residuals", main = "Fitted vs Residuals")
+    abline(h=0, col = lcol)
+    qqnorm(resid(model), col = pcol, main = "Normal Q-Q plot")
+    qqline(resid(model), col = lcol)
+  }
+  if(testit){
+    p_val = shapiro.test(resid(model))[[2]]
+    decision = (p_val < alpha)
+    return(list(p_val=p_val, decision=decision))
+  }
+}
+
+non_influential_filter = function(model){
+  !(cooks.distance(model) > (4 / length(cooks.distance(model))))
+}
+
+```
+
+
+Let's test the functionality
+```{r}
+fit = lm(total_UPDRS ~ . - motor_UPDRS, data = park_trn_data)
+summary(fit)
+eval_model(fit)
+diagnostics(fit)
+sum(!non_influential_filter(fit))
+```
+
+
+
+### Results
+
+
+
+### Discussion
+
