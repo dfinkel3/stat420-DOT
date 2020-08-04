@@ -83,20 +83,33 @@ We have successfully loaded the data into R. A preview of the data is below:
 
 ```{r message=FALSE, warning=FALSE}
 library(readr)
-data = read_csv("DATA.csv")
-head(data$total_UPDRS)
+parkins = read_csv("~/GitHub/stat420-DOT/OB_STAT/parkinsons_updrs.csv")
+
 ```
 
-```{r message=FALSE, warning=FALSE}
+The "\`subject#\`" column is a unique identifier we don't need for modeling, so we will remove it.
+```{r}
+parkins = subset(parkins, select = -c(`subject#`))
+```
+
+
+We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
+```{r}
 library(leaps)
-full_model = lm(total_UPDRS ~ ., data = data)
-names(coef(full_model))
+set.seed(420)
+park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
+park_trn_data = parkins[park_trn_idx, ]
+park_tst_data = parkins[-park_trn_idx, ]
 
+
+names(coef(full_model))
 ```
+
 First, we will look for the best model using different methods and types of models. Starting with the additive models. 
 
 ```{r}
-fit_fow = lm(total_UPDRS ~ 1, data = data)
+full_model = lm(total_UPDRS ~ . - motor_UPDRS , data = park_trn_data)
+fit_fow = lm(total_UPDRS ~ 1, data = park_trn_data)
 n = length(resid(full_model))
 
 #backward
@@ -104,34 +117,223 @@ fit_back_aic = step(full_model, direction = "backward", trace = 0)
 fit_back_bic = step(full_model, direction = "backward", trace = 0, k = log(n))
 
 #forward
-fit_fow_aic = step(fit_fow, scope = total_UPDRS ~ `subject#` + age + sex + test_time + motor_UPDRS + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "forward", trace = 0)
+fit_fow_aic = step(fit_fow, scope = total_UPDRS ~ age + sex + test_time  + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "forward", trace = 0)
 
-fit_fow_bic = step(fit_fow, scope = total_UPDRS ~ `subject#` + age + sex + test_time + motor_UPDRS + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "forward", trace = 0, k = log(n))
+fit_fow_bic = step(fit_fow, scope = total_UPDRS ~ age + sex + test_time  + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "forward", trace = 0, k = log(n))
 
 #Stepwise Search
 
-fit_fow_aic = step(fit_fow, scope = total_UPDRS ~ `subject#` + age + sex + test_time + motor_UPDRS + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, trace = 0, direction = "both")
+fit_both_aic = step(fit_fow, scope = total_UPDRS ~  age + sex + test_time + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, trace = 0, direction = "both")
 
-fit_fow_bic = step(fit_fow, scope = total_UPDRS ~ `subject#` + age + sex + test_time + motor_UPDRS + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "both", trace = 0, k = log(n))
+fit_both_bic = step(fit_fow, scope = total_UPDRS ~ age + sex + test_time + `Jitter(%)` + `Jitter(Abs)` + `Jitter:RAP` + `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + `Shimmer:APQ3` + `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + HNR + RPDE + DFA + PPE, direction = "both", trace = 0, k = log(n))
 
-Exhaustive_model = summary(regsubsets(total_UPDRS ~ ., data = data))
+Exhaustive_model = summary(regsubsets(total_UPDRS ~ . -motor_UPDRS , data = park_trn_data))
 
 best_r2_ind = which.max(Exhaustive_model$adjr2)
 
-
 #best Adjusted R^2
-Exhaustive_model$which[best_r2_ind, ]
+Exhaustive = lm(total_UPDRS ~ age + sex + test_time + `Jitter(Abs)` + `Shimmer:APQ3` + HNR + DFA + PPE, data = park_trn_data)
+```
+
+### Methods
+
+#### Helper functions:
+
+We first create a suite of helper functions to more easily evaluate our models.
+
+```{r, message = FALSE, warning = FALSE}
+
+library(lmtest)
+
+get_bp = function(model) {
+  unname(bptest(model)$p.value)
+}
+
+get_sw = function(model) {
+  unname(shapiro.test(resid(model))$p.value > 0.05)
+}
+
+get_num_params = function(model) {
+  length(coef(model))
+}
+
+get_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2))
+}
+
+get_adj_r2 = function(model) {
+  summary(model)$adj.r.squared
+}
+
+eval_model = function(model){
+  list(bp = get_bp(model),
+       sw = get_sw(model),
+       rmse = get_loocv_rmse(model),
+       adj_r2 = get_adj_r2(model),
+       num_p = get_num_params(model))
+}
+
+diagnostics = function(model, pcol="grey", lcol="dodgerblue", alpha=0.05, plotit=TRUE, testit=TRUE){
+  if(plotit){
+    par(mfrow = c(1,2))
+    plot(fitted(model), resid(model), col = pcol, 
+         xlab = "Fitted", ylab = "Residuals", main = "Fitted vs Residuals")
+    abline(h=0, col = lcol)
+    qqnorm(resid(model), col = pcol, main = "Normal Q-Q plot")
+    qqline(resid(model), col = lcol)
+  }
+  if(testit){
+    p_val = shapiro.test(resid(model))[[2]]
+    decision = (p_val < alpha)
+    return(list(p_val=p_val, decision=decision))
+  }
+}
+
+non_influential_filter = function(model){
+  !(cooks.distance(model) > (4 / length(cooks.distance(model))))
+}
 
 ```
-Now we look for all first-order terms, as well as all two-way interactions:
+
+
 
 ```{r}
 
-inter_model = lm(log(total_UPDRS) ~ . ^ 2 , data = data)
-fit_back_aic = step(inter_model, direction = "backward", trace = 0)
-fit_back_bic = step(inter_model, direction = "backward", trace = 0, k = log(n))
+
+
+shapiro.test(resid(fit_back_aic))$p.value
+eval_model(fit_back_aic)
+sum(!non_influential_filter(fit_back_aic))
+
+shapiro.test(resid(fit_back_bic))$p.value
+eval_model(fit_back_bic)
+sum(!non_influential_filter(fit_back_bic))
+
+#forward
+
+
+shapiro.test(resid(fit_fow_aic))$p.value
+eval_model(fit_fow_aic)
+sum(!non_influential_filter(fit_fow_aic))
+
+shapiro.test(resid(fit_fow_bic))$p.value
+eval_model(fit_fow_bic)
+sum(!non_influential_filter(fit_fow_bic))
+
+
+#Stepwise Search
+
+
+
+
+shapiro.test(resid(fit_both_aic))$p.value
+eval_model(fit_both_aic)
+sum(!non_influential_filter(fit_both_aic))
+
+shapiro.test(resid(fit_both_bic))$p.value
+eval_model(fit_both_bic)
+sum(!non_influential_filter(fit_both_bic))
+
+
+
+#Exhaustive
+shapiro.test(resid(Exhaustive))$p.value
+eval_model(Exhaustive)
+sum(!non_influential_filter(Exhaustive))
+
+
 
 ```
+
+
+
+
+
+
+
+#1 Model 
+```{r}
+
+
+new_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data)
+
+mod_cook = cooks.distance(new_model)
+
+new_fix_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data, subset = mod_cook <= 4 / length(mod_cook))
+
+
+
+
+shapiro.test(resid(new_fix_model))$p.value
+eval_model(new_fix_model)
+sum(!non_influential_filter(new_fix_model))
+
+
+diagnostics(new_fix_model)
+
+```
+#2 Model 
+
+```{r}
+new_model = lm( log(total_UPDRS) ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data)
+
+mod_cook = cooks.distance(new_model)
+
+new_fix_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data, subset = mod_cook <= 4 / length(mod_cook))
+
+shapiro.test(resid(new_fix_model))$p.value
+eval_model(new_fix_model)
+sum(!non_influential_filter(new_fix_model))
+
+
+diagnostics(new_model)
+```
+#3 model
+```{r}
+new_model = lm( total_UPDRS ~ age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE +  DFA +
+     I(DFA ^ 2), data = park_trn_data)
+
+mod_cook = cooks.distance(new_model)
+
+new_fix_model = lm( total_UPDRS ~ age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA +
+     I(DFA ^ 2), data = park_trn_data, subset = mod_cook <= 4 / length(mod_cook))
+
+shapiro.test(resid(new_fix_model))$p.value
+eval_model(new_fix_model)
+sum(!non_influential_filter(new_fix_model))
+
+
+diagnostics(new_model)
+
+
+```
+
+```{r}
+new_model = lm( total_UPDRS ~ . ^ 2, data = park_trn_data)
+
+fit_back_aic = step(new_model, direction = "backward", trace = 0)
+
+```
+
+
 
 
 
