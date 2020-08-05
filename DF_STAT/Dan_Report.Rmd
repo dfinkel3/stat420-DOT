@@ -29,10 +29,10 @@ Our chosen data file contains 22 attributes of 5875 observations. The attributes
 - number of days since recruitment.
 - motor_UPDRS - Clinician's motor UPDRS score, linearly interpolated
 - total_UPDRS - Clinician's total UPDRS score, linearly interpolated
-- Jitter(%),Jitter(Abs),Jitter:RAP,Jitter:PPQ5,Jitter:DDP - Several measures of
-- variation in fundamental frequency
+- Jitter(%),Jitter(Abs),Jitter:RAP,Jitter:PPQ5,Jitter:DDP 
+  - Several measures of variation in fundamental frequency
 - Shimmer,Shimmer(dB),Shimmer:APQ3,Shimmer:APQ5,Shimmer:APQ11,Shimmer:DDA
-- Several measures of variation in amplitude
+  - Several measures of variation in amplitude
 - NHR,HNR - Two measures of ratio of noise to tonal components in the voice
 - RPDE - A nonlinear dynamical complexity measure
 - DFA - Signal fractal scaling exponent
@@ -97,31 +97,38 @@ get_adj_r2 = function(model) {
 }
 
 eval_model = function(model){
-  list(bp = get_bp(model),
-       sw = get_sw(model),
-       rmse = get_loocv_rmse(model),
+  list(b_pagan = get_bp(model),
+       shap_wilk = get_sw(model),
+       rmse_trn = get_loocv_rmse(model),
        adj_r2 = get_adj_r2(model),
        num_p = get_num_params(model))
 }
 
-diagnostics = function(model, pcol="grey", lcol="dodgerblue", alpha=0.05, plotit=TRUE, testit=TRUE){
-  if(plotit){
-    par(mfrow = c(1,2))
-    plot(fitted(model), resid(model), col = pcol, 
-         xlab = "Fitted", ylab = "Residuals", main = "Fitted vs Residuals")
-    abline(h=0, col = lcol)
-    qqnorm(resid(model), col = pcol, main = "Normal Q-Q plot")
-    qqline(resid(model), col = lcol)
-  }
-  if(testit){
-    p_val = shapiro.test(resid(model))[[2]]
-    decision = (p_val < alpha)
-    return(list(p_val=p_val, decision=decision))
-  }
+diagnostic_plots = function(model, pcol="grey", lcol="dodgerblue"){
+  par(mfrow = c(1,2))
+  plot(fitted(model), resid(model), col = pcol, 
+       xlab = "Fitted", ylab = "Residuals", main = "Fitted vs Residuals")
+  abline(h=0, col = lcol)
+  qqnorm(resid(model), col = pcol, main = "Normal Q-Q plot")
+  qqline(resid(model), col = lcol)
 }
 
 non_influential_filter = function(model){
   !(cooks.distance(model) > (4 / length(cooks.distance(model))))
+}
+
+calc_rmse = function(predicted, actual){
+  sqrt(sum((predicted - actual) ^ 2) / length(actual))
+}
+
+plot_pva = function(predicted, actual){
+  plot(actual, predicted, 
+     col = "darkgrey",
+     xlab = "Actual",
+     ylab = "Predicted",
+     main = "Predicted vs Actual")
+  grid()
+  abline(0, 1, col = "dodgerblue")
 }
 
 ```
@@ -132,8 +139,47 @@ Let's test the functionality
 fit = lm(total_UPDRS ~ . - motor_UPDRS, data = park_trn_data)
 summary(fit)
 eval_model(fit)
-diagnostics(fit)
+diagnostic_plots(fit)
 sum(!non_influential_filter(fit))
+```
+
+
+#### Variance Inflation Factor
+
+```{r}
+vifs = round(car::vif(fit), 3)
+vifs[vifs > 5]
+vifs[vifs > 10]
+```
+
+```{r}
+non_inf_fit = lm(total_UPDRS ~ . - motor_UPDRS, data = park_trn_data, subset = non_influential_filter(fit))
+n = length(resid(non_inf_fit))
+back_aic = step(non_inf_fit, direction = "backward", trace = 0, k = log(n))
+eval_model(non_inf_fit)
+eval_model(back_aic)
+summary(back_aic)
+
+predicted = predict(back_aic, park_trn_data)
+calc_rmse(predicted, park_trn_data$total_UPDRS)
+plot_pva(predicted, park_trn_data$total_UPDRS)
+
+predicted = predict(back_aic, park_tst_data)
+calc_rmse(predicted, park_tst_data$total_UPDRS)
+plot_pva(predicted, park_tst_data$total_UPDRS)
+
+
+```
+
+Let's try a simple model
+
+```{r}
+simple = lm(total_UPDRS ~ `Jitter(Abs)` + Shimmer + NHR + HNR + DFA + PPE, data = park_trn_data)
+eval_model(simple)
+
+predicted = predict(simple, park_tst_data)
+calc_rmse(predicted, park_tst_data$total_UPDRS)
+plot_pva(predicted, park_tst_data$total_UPDRS)
 ```
 
 
