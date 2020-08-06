@@ -66,8 +66,11 @@ This project aims to develop a model to predict `total_UPDRS` using the remainin
 
 <br>
 
-First we load in our data:
+### Methods
 
+#### Exploratory Phase
+
+Examining the dataset revealed it was already very clean. There were no empty values or obvious typos that needed to be fixed. However, looking over the column names and underlying data revealed some modifications needed to be made before modeling. 
 ```{r, message = FALSE}
 library(readr)
 parkins = read_csv("parkinsons_updrs.csv")
@@ -81,7 +84,9 @@ The "\`subject#\`" column is a unique identifier for each individual. Because ou
 ```{r}
 parkins = subset(parkins, select = -c(`subject#`))
 ```
-
+```{r, echo=FALSE}
+parkins_orig = parkins
+```
 <br>
 
 ##### Variable Examination
@@ -103,36 +108,54 @@ parkins %>%
 
 We see right away that the individuals range in age from about 35-90, with the majority of them falling between 55-80 years old.
 
-
-#### Insert more descriptions of data?
-
-
-
-##### Model Building Approach
-
-We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
-```{r}
-set.seed(420)
-park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
-park_trn_data = parkins[park_trn_idx, ]
-park_tst_data = parkins[-park_trn_idx, ]
-```
-
 <br>
 
-### Methods
+There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some colinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. Figures 1-4 show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are colinear and should likely be removed, but predictor columns higly correlated with our response variable are likely to improve the model.
+```{r, eval=FALSE}
+library(GGally)
+ggpairs(columns = c(5, 4, 1, 2, 3), data=parkins)
+ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins)
+ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins)
+ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins)
+```
 
-Additive Models
+Another method of measuring colinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than `10` imply a signficant collinearity. 
+```{r, eval=FALSE}
+library(faraway)
+faraway::vif(parkins)
+```
 
-Interaction Models
+An interesting property of VIF is that if two columns are colinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns colinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
+```{r}
+# Drop columns that have a vif > 5, starting with highest first
+fix_vif = function (data) {
+  newData = data
+  max_vif = max(faraway::vif(newData))
+  while (max_vif > 5) {
+    #print(summary(lm(total_UPDRS ~ ., data = newData))$adj)
+    newData = subset(newData, select = c(setdiff(names(newData), names(which.max(faraway::vif(newData))))))
+    max_vif = max(faraway::vif(newData))
+  }
+  newData
+}
+```
 
-QQplots
+Evaluating our measures of colinearity, `motor_UPDRS` was found to be highly colinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for calculating their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to reomve it from our model building process.
+```{r}
+parkins = subset(parkins, select = -c(motor_UPDRS))
+```
 
-Leverage and Influential Points
+Evaluating the other columns did not show any strong linear correlations with `total_UPDRS`, unfortunately, so there was no early indication that an additive model would be enough. On the other hand, there also were no obvious polynomial relationships, so we felt confident we would not need to apply any polynomial transformations. Interactions were still a strong possibility that couldn't be ignored, especially with `sex` being a factor variable.
 
-Colinearity
+#### Model Building Phase
 
-Model evaluation metrics
+To get a general idea of how effective the predictors would be, we used all the rows and all the columns to train fully additive and interaction models. 
+```{r}
+additive_fit = lm(total_UPDRS ~ . , data = parkins)
+interaction_fit = lm(total_UPDRS ~ (.)^2 , data = parkins)
+```
+- The fully additive model created a poorly fit model with an adjusted R^2 of `0.1739`. 
+- The interaction model gave a slight improvment, with an adjusted R^2 of `0.3199`.
 
 
 
@@ -145,8 +168,8 @@ We first create a suite of helper functions to more easily evaluate our models.
 
 library(lmtest)
 
-calc_rmse = function(model){
-  sqrt(mean((predict(model, park_tst_data) - park_tst_data$total_UPDRS) ^ 2))
+calc_rmse = function(model, tst_data){
+  sqrt(mean((predict(model, tst_data) - tst_data$total_UPDRS) ^ 2))
 }
 
 get_bp = function(model) {
@@ -169,12 +192,12 @@ get_adj_r2 = function(model) {
   summary(model)$adj.r.squared
 }
 
-eval_model = function(model){
+eval_model = function(model, tst_data){
   list(b_pagan = get_bp(model),
        shap_wilk = get_sw(model),
        rmse_loocv = get_loocv_rmse(model),
        rmse_trn = sqrt(mean(model$residuals^2)),
-       rmse_tst = calc_rmse(model),
+       rmse_tst = calc_rmse(model, tst_data),
        adj_r2 = get_adj_r2(model),
        num_p = get_num_params(model))
 }
@@ -201,7 +224,80 @@ plot_pva = function(predicted, actual){
   grid()
   abline(0, 1, col = "dodgerblue")
 }
+```
 
+
+So, anyway, here's a simulation...
+```{r}
+set.seed(420)
+num_sims = 5
+
+additive_evals = rep(list(rep(0, num_sims)), 7)
+interaction_evals = rep(list(rep(0, num_sims)), 7)
+additive_vif_evals = rep(list(rep(0, num_sims)), 7)
+interaction_vif_evals = rep(list(rep(0, num_sims)), 7)
+
+for (i in 1:num_sims) {
+  # create a new train/test split
+  park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
+  park_trn_data = parkins[park_trn_idx, ]
+  park_tst_data = parkins[-park_trn_idx, ]
+  
+  # train full additive model
+  add_fit = lm(total_UPDRS ~ . , data = park_trn_data)
+  add_eval = eval_model(add_fit, park_tst_data)
+  
+  # train full interaction model
+  int_fit = lm(total_UPDRS ~ .^2 , data = park_trn_data)
+  int_eval = eval_model(int_fit, park_tst_data)
+  
+  # use VIF to remove colinear columns
+  vif_rem_park_trn_data = fix_vif(park_trn_data)
+  
+  # train additive model with columns removed by VIF
+  add_vif_fit = lm(total_UPDRS ~ . , data = vif_rem_park_trn_data)
+  add_vif_eval = eval_model(add_vif_fit, park_tst_data)
+  
+  # train interaction model with columns removed by VIF
+  int_vif_fit = lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data)
+  int_vif_eval = eval_model(int_vif_fit, park_tst_data)
+  
+  for (j in 1:length(add_eval)) {
+    additive_evals[[j]][i] = add_eval[j]
+    interaction_evals[[j]][i] = int_eval[j]
+    additive_vif_evals[[j]][i] = add_vif_eval[j]
+    interaction_vif_evals[[j]][i] = int_vif_eval[j]
+  }
+  
+}
+
+```
+
+
+
+
+Interaction Models
+
+QQplots
+
+Leverage and Influential Points
+
+Colinearity
+
+
+
+
+
+Model evaluation metrics
+
+
+
+
+#### Helper functions:
+
+We first create a suite of helper functions to more easily evaluate our models.
+
+```{r, message = FALSE, warning = FALSE, eval=FALSE}
 
 
 
@@ -224,24 +320,41 @@ new_fix_model2 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE, data
 ```
 
 
-Let's test the functionality
-```{r}
-fit = lm(total_UPDRS ~ . - motor_UPDRS, data = park_trn_data)
-summary(fit)
-eval_model(fit)
-diagnostic_plots(fit)
-sum(!non_influential_filter(fit))
-```
-
 
 
 ### Results
 
+colinearity matrix
+```{r, eval=TRUE, echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE}
+library(GGally)
+ggpairs(columns = c(5, 4, 2, 3, 1), data=parkins_orig)
+ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins_orig)
+ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins_orig)
+ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins_orig)
+```
+
 actual qqplots/fitted vs residual
 
-colinearity matrix
 
-Table of best models, with metrics
+
+#### Table of best models, with metrics
+
+```{r echo = FALSE, fig.align = 'center'}
+
+dframe = data.frame(
+  model = c("additive_full", "additive_vif", "interaction", "interaction_vif"),
+  b_pagan = round(c(mean(unlist(additive_evals[1])), mean(unlist(additive_vif_evals[1])), mean(unlist(interaction_evals[1])), mean(unlist(interaction_vif_evals[1]))), 3),
+  shap_wilk = round(c(mean(unlist(additive_evals[2])), mean(unlist(additive_vif_evals[2])), mean(unlist(interaction_evals[2])), mean(unlist(interaction_vif_evals[2]))), 3),
+  rmse_loocv = round(c(mean(unlist(additive_evals[3])), mean(unlist(additive_vif_evals[3])), mean(unlist(interaction_evals[3])), mean(unlist(interaction_vif_evals[3]))), 3),
+  rmse_trn = round(c(mean(unlist(additive_evals[4])), mean(unlist(additive_vif_evals[4])), mean(unlist(interaction_evals[4])), mean(unlist(interaction_vif_evals[4]))), 3),
+  rmse_tst = round(c(mean(unlist(additive_evals[5])), mean(unlist(additive_vif_evals[5])), mean(unlist(interaction_evals[5])), mean(unlist(interaction_vif_evals[5]))), 3),
+  adj_r2 = round(c(mean(unlist(additive_evals[6])), mean(unlist(additive_vif_evals[6])), mean(unlist(interaction_evals[6])), mean(unlist(interaction_vif_evals[6]))), 3),
+  num_pred = round(c(mean(unlist(additive_evals[7])), mean(unlist(additive_vif_evals[7])), mean(unlist(interaction_evals[7])), mean(unlist(interaction_vif_evals[7]))), 1)
+)
+
+knitr::kable(dframe)
+```
+
 
 PVAs
 
