@@ -387,7 +387,7 @@ plot_pva(predicted, park_tst_data$total_UPDRS)
 
 
 ```{r}
-new_fix_model = step(lm(total_UPDRS ~ (.) ^ 2, data = park_trn_data), trace = 0)
+new_fix_model = step(lm(total_UPDRS ~ (. - motor_UPDRS) ^ 2, data = park_trn_data), trace = 0)
 
 
 
