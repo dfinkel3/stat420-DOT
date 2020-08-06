@@ -68,6 +68,21 @@ park_tst_data = parkins[-park_trn_idx, ]
 
 ### Methods
 
+Additive Models
+
+Interaction Models
+
+QQplots
+
+Leverage and Influential Points
+
+Colinearity
+
+Model evaluation metrics
+
+
+
+
 #### Helper functions:
 
 We first create a suite of helper functions to more easily evaluate our models.
@@ -75,6 +90,10 @@ We first create a suite of helper functions to more easily evaluate our models.
 ```{r, message = FALSE, warning = FALSE}
 
 library(lmtest)
+
+calc_rmse = function(model){
+  sqrt(mean((predict(model, park_tst_data) - park_tst_data$total_UPDRS) ^ 2))
+}
 
 get_bp = function(model) {
   unname(bptest(model)$p.value)
@@ -99,7 +118,9 @@ get_adj_r2 = function(model) {
 eval_model = function(model){
   list(b_pagan = get_bp(model),
        shap_wilk = get_sw(model),
-       rmse_trn = get_loocv_rmse(model),
+       rmse_loocv = get_loocv_rmse(model),
+       rmse_trn = sqrt(mean(model$residuals^2)),
+       rmse_tst = calc_rmse(model),
        adj_r2 = get_adj_r2(model),
        num_p = get_num_params(model))
 }
@@ -115,10 +136,6 @@ diagnostic_plots = function(model, pcol="grey", lcol="dodgerblue"){
 
 non_influential_filter = function(model){
   !(cooks.distance(model) > (4 / length(cooks.distance(model))))
-}
-
-calc_rmse = function(predicted, actual){
-  sqrt(sum((predicted - actual) ^ 2) / length(actual))
 }
 
 plot_pva = function(predicted, actual){
@@ -147,7 +164,30 @@ sum(!non_influential_filter(fit))
 
 ### Results
 
+actual qqplots/fitted vs residual
+
+colinearity matrix
+
+Table of best models, with metrics
+
+PVAs
+
+
+
+
 
 
 ### Discussion
+
+Colinearity among columns
+
+Influential points
+
+overfitting
+
+Why we chose the metrics we did
+
+(Comparison with model from paper)
+
+
 

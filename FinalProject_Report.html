@@ -447,10 +447,20 @@ park_tst_data = parkins[-park_trn_idx, ]</code></pre>
 </div>
 <div id="methods" class="section level3">
 <h3>Methods</h3>
+<p>Additive Models</p>
+<p>Interaction Models</p>
+<p>QQplots</p>
+<p>Leverage and Influential Points</p>
+<p>Colinearity</p>
+<p>Model evaluation metrics</p>
 <div id="helper-functions" class="section level4">
 <h4>Helper functions:</h4>
 <p>We first create a suite of helper functions to more easily evaluate our models.</p>
 <pre class="r"><code>library(lmtest)
+
+calc_rmse = function(model){
+  sqrt(mean((predict(model, park_tst_data) - park_tst_data$total_UPDRS) ^ 2))
+}
 
 get_bp = function(model) {
   unname(bptest(model)$p.value)
@@ -475,7 +485,9 @@ get_adj_r2 = function(model) {
 eval_model = function(model){
   list(b_pagan = get_bp(model),
        shap_wilk = get_sw(model),
-       rmse_trn = get_loocv_rmse(model),
+       rmse_loocv = get_loocv_rmse(model),
+       rmse_trn = sqrt(mean(model$residuals^2)),
+       rmse_tst = calc_rmse(model),
        adj_r2 = get_adj_r2(model),
        num_p = get_num_params(model))
 }
@@ -491,10 +503,6 @@ diagnostic_plots = function(model, pcol=&quot;grey&quot;, lcol=&quot;dodgerblue&
 
 non_influential_filter = function(model){
   !(cooks.distance(model) &gt; (4 / length(cooks.distance(model))))
-}
-
-calc_rmse = function(predicted, actual){
-  sqrt(sum((predicted - actual) ^ 2) / length(actual))
 }
 
 plot_pva = function(predicted, actual){
@@ -552,8 +560,14 @@ summary(fit)</code></pre>
 ## $shap_wilk
 ## [1] 4.071135e-26
 ## 
-## $rmse_trn
+## $rmse_loocv
 ## [1] 9.796641
+## 
+## $rmse_trn
+## [1] 9.751587
+## 
+## $rmse_tst
+## [1] 9.569758
 ## 
 ## $adj_r2
 ## [1] 0.1795353
@@ -568,9 +582,18 @@ summary(fit)</code></pre>
 </div>
 <div id="results" class="section level3">
 <h3>Results</h3>
+<p>actual qqplots/fitted vs residual</p>
+<p>colinearity matrix</p>
+<p>Table of best models, with metrics</p>
+<p>PVAs</p>
 </div>
 <div id="discussion" class="section level3">
 <h3>Discussion</h3>
+<p>Colinearity among columns</p>
+<p>Influential points</p>
+<p>overfitting</p>
+<p>Why we chose the metrics we did</p>
+<p>(Comparison with model from paper)</p>
 </div>
 </div>
 </div>

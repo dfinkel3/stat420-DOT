@@ -59,7 +59,7 @@ parkins = subset(parkins, select = -c(`subject#`))
 
 We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
 ```{r}
-set.seed(420)
+set.seed(42)
 park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
 park_trn_data = parkins[park_trn_idx, ]
 park_tst_data = parkins[-park_trn_idx, ]
@@ -75,6 +75,10 @@ We first create a suite of helper functions to more easily evaluate our models.
 ```{r, message = FALSE, warning = FALSE}
 
 library(lmtest)
+
+calc_rmse = function(model){
+  sqrt(mean((predict(model, park_tst_data) - park_tst_data$total_UPDRS) ^ 2))
+}
 
 get_bp = function(model) {
   unname(bptest(model)$p.value)
@@ -99,7 +103,9 @@ get_adj_r2 = function(model) {
 eval_model = function(model){
   list(b_pagan = get_bp(model),
        shap_wilk = get_sw(model),
-       rmse_trn = get_loocv_rmse(model),
+       rmse_loocv = get_loocv_rmse(model),
+       rmse_trn = sqrt(mean(model$residuals^2)),
+       rmse_tst = calc_rmse(model),
        adj_r2 = get_adj_r2(model),
        num_p = get_num_params(model))
 }
@@ -115,10 +121,6 @@ diagnostic_plots = function(model, pcol="grey", lcol="dodgerblue"){
 
 non_influential_filter = function(model){
   !(cooks.distance(model) > (4 / length(cooks.distance(model))))
-}
-
-calc_rmse = function(predicted, actual){
-  sqrt(sum((predicted - actual) ^ 2) / length(actual))
 }
 
 plot_pva = function(predicted, actual){
@@ -137,18 +139,37 @@ plot_pva = function(predicted, actual){
 Let's test the functionality
 ```{r}
 fit = lm(total_UPDRS ~ . - motor_UPDRS, data = park_trn_data)
-summary(fit)
-eval_model(fit)
-diagnostic_plots(fit)
-sum(!non_influential_filter(fit))
+#summary(fit)
+#eval_model(fit)
+#diagnostic_plots(fit)
+#sum(!non_influential_filter(fit))
 ```
+
+
+#### Correlations
+
+```{r}
+#pairs(total_UPDRS ~ `Jitter(Abs)` + Shimmer + NHR + HNR + DFA + PPE, data = parkins)
+#pairs(parkins[, 1:6], lower.panel = NULL,)
+
+library(GGally)
+ggpairs(columns = c('total_UPDRS', 'motor_UPDRS', 'age', 'sex', 'test_time'), data=parkins)
+ggpairs(columns = c('total_UPDRS', 'NHR', 'HNR', 'RPDE', 'DFA', 'PPE'), data=parkins)
+
+#ggpairs(columns = c('total_UPDRS', '`Jitter(%)`', '`Jitter(Abs)`', '`Jitter:RAP`', '`Jitter:PPQ5`', '`Jitter:DDP`'), data=parkins)
+#ggpairs(columns = c('total_UPDRS', 'Shimmer', '`Shimmer(dB)`', '`Shimmer:APQ3`', '`Shimmer:APQ5`', '`Shimmer:APQ11`', '`Shimmer:DDA`'), data=parkins)
+
+```
+
+
+
 
 
 #### Variance Inflation Factor
 
 ```{r}
 vifs = round(car::vif(fit), 3)
-vifs[vifs > 5]
+#vifs[vifs > 5]
 vifs[vifs > 10]
 ```
 
@@ -161,11 +182,11 @@ eval_model(back_aic)
 summary(back_aic)
 
 predicted = predict(back_aic, park_trn_data)
-calc_rmse(predicted, park_trn_data$total_UPDRS)
+calc_rmse(back_aic)
 plot_pva(predicted, park_trn_data$total_UPDRS)
 
 predicted = predict(back_aic, park_tst_data)
-calc_rmse(predicted, park_tst_data$total_UPDRS)
+calc_rmse(back_aic)
 plot_pva(predicted, park_tst_data$total_UPDRS)
 
 
@@ -178,8 +199,25 @@ simple = lm(total_UPDRS ~ `Jitter(Abs)` + Shimmer + NHR + HNR + DFA + PPE, data 
 eval_model(simple)
 
 predicted = predict(simple, park_tst_data)
-calc_rmse(predicted, park_tst_data$total_UPDRS)
+calc_rmse(simple)
 plot_pva(predicted, park_tst_data$total_UPDRS)
+```
+
+Let's try an interaction model
+
+```{r}
+inter = lm(total_UPDRS ~ (. - motor_UPDRS - `Jitter:RAP` - `Shimmer:APQ3` - test_time - sex - NHR)^2, data = park_trn_data)
+eval_model(inter)
+plot_pva(predict(inter, park_tst_data), park_tst_data$total_UPDRS)
+
+sum(non_influential_filter(inter))
+non_inf_fit = lm(total_UPDRS ~ (. - motor_UPDRS - `Jitter:RAP` - `Shimmer:APQ3` - test_time - sex - NHR)^2, data = park_trn_data, subset = non_influential_filter(inter))
+eval_model(non_inf_fit)
+plot_pva(predict(non_inf_fit, park_tst_data), park_tst_data$total_UPDRS)
+
+n = length(resid(non_inf_fit))
+back_aic = step(non_inf_fit, direction = "backward", trace = 0, k = log(n))
+eval_model(back_aic)
 ```
 
 
