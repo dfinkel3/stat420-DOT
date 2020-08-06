@@ -1,0 +1,203 @@
+---
+title: "Week 10 - Homework"
+author: "STAT 420, Summer 2020, D. Unger"
+student: "Albert Ferguson, albertf2"
+date: '07/27/2020'
+output:
+  html_document: 
+    theme: readable
+    toc: yes
+  pdf_document: default
+urlcolor: cyan
+---
+
+```{r}
+library(lmtest)
+library(shiny)
+library(pairsD3)
+library(readr)
+library(psych)
+
+get_bp = function(model) {
+  unname(bptest(model)$p.value)
+}
+
+get_sw = function(model) {
+  unname(shapiro.test(resid(model))$p.value)
+}
+
+get_num_params = function(model) {
+  length(coef(model))
+}
+
+get_loocv_rmse = function(model) {
+  sqrt(mean((resid(model) / (1 - hatvalues(model))) ^ 2))
+}
+
+get_adj_r2 = function(model) {
+  summary(model)$adj.r.squared
+}
+
+eval_model = function(model){
+  list(bp = get_bp(model),
+       sw = get_sw(model),
+       rmse = get_loocv_rmse(model),
+       adj_r2 = get_adj_r2(model),
+       num_p = get_num_params(model))
+}
+
+diagnostics = function(model, pcol="grey", lcol="dodgerblue", alpha=0.05, plotit=TRUE, testit=TRUE){
+  if(plotit){
+    par(mfrow = c(1,2))
+    plot(fitted(model), resid(model), col = pcol,
+         xlab = "Fitted", ylab = "Residuals", main = "Fitted vs Residuals")
+    abline(h=0, col = lcol)
+    qqnorm(resid(model), col = pcol, main = "Normal Q-Q plot")
+    qqline(resid(model), col = lcol)
+  }
+  if(testit){
+    p_val = shapiro.test(resid(model))[[2]]
+    decision = (p_val < alpha)
+    return(list(p_val=p_val, decision=decision))
+  }
+}
+
+calc_rmse = function(predicted, actual){
+  sqrt(sum((predicted - actual) ^ 2) / length(actual))
+}
+
+plot_pva = function(predicted, actual){
+  plot(actual, predicted,
+     col = "darkgrey",
+     xlab = "Actual",
+     ylab = "Predicted",
+     main = "Predicted vs Actual"
+  )
+  grid()
+  abline(0, 1, col = "dodgerblue")
+}
+
+# Drop columns that have a vif > 5, starting with highest first
+fix_vif = function (data) {
+  max_vif = max(faraway::vif(data))
+  while (max_vif > 5) {
+    print(summary(lm(total_UPDRS ~ ., data = data))$adj)
+    data = subset(data, select = c(setdiff(names(data), names(which.max(faraway::vif(data))))))
+    max_vif = max(faraway::vif(data))
+  }
+  data
+}
+
+data = read_csv('parkinsons_updrs.csv')
+
+data = subset(data, select = -c(`motor_UPDRS`))
+
+print("Initial adjusted R^2:")
+print(summary(lm(total_UPDRS ~ ., data = data))$adj)
+
+partial.r(data)
+
+# Remove all columns that have a partial correlation coefficient with total_UPDRS below 0.02
+data = subset(data, select = -c(`subject#`, `Jitter(%)`, `Jitter:RAP`, `Jitter:PPQ5`, `Jitter:DDP`, `Shimmer`, `Shimmer(dB)`, `Shimmer:APQ11`, `Shimmer:DDA`))
+
+faraway::vif(data)
+
+data = fix_vif(data)
+
+faraway::vif(data)
+
+get_data = function() {
+  set.seed(420)
+  data = subset(data, select = -c(age2))
+  park_trn_idx  = sample(nrow(data), size = trunc(0.80 * nrow(data)))
+  park_trn_data = data[park_trn_idx, ]
+  park_tst_data = data[-park_trn_idx, ]
+  list(park_trn_data, park_tst_data)
+}
+
+d = get_data()
+
+
+
+m = lm(total_UPDRS ~ (. - age) ^ 2, data = d[[1]])
+m2 = lm(total_UPDRS ~ ., data = subset(d[[1]], select = -c(NHR, `Shimmer:APQ3`)))
+summary(m2)
+m3 = lm(total_UPDRS ~ .^2, data = subset(d[[1]], select = -c(NHR, `Shimmer:APQ3`)))
+anova(m2, m3)
+plot(m)
+eval_model(m2)
+
+head(d[[1]])
+coef(m2)
+
+str(d[[1]])
+d
+d[[1]] = d[[1]][hatvalues(m2) <= 12 * mean(hatvalues(m2)), ]
+
+# View leverages
+for (i in 1:12) {
+  print(mean(hatvalues(m) <= 12 * mean(hatvalues(m))))
+}
+
+bic = step(m2, direction = "backward", trace = 0)
+bic
+m2
+length(coef(bic))
+plot(bic)
+
+predicted = predict(m2, d[[2]])
+calc_rmse(predicted, d[[2]]$total_UPDRS)
+plot_pva(predict(m2, d[[2]]), d[[2]]$total_UPDRS)
+
+d[[1]][d[[1]]$total_UPDRS < 10, ]
+
+d[[1]]
+coef(m2)
+
+
+d[[1]] = d[[1]][cooks.distance(m2) < 7 / length(resid(m2)), ]
+
+for (i in 1:10) {
+  print(mean(cooks.distance(m2) > i / length(resid(m2))))
+}
+
+```
+
+We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
+```{r}
+
+
+# age   sex test_time total_UPDRS `Jitter(Abs)` `Jitter:PPQ5` `Shimmer:APQ11`   HNR  RPDE   DFA   PPE
+
+#pairs(park_trn_data)
+#shinypairs(park_tst_data)
+
+head(park_trn_cooks_corrected)
+
+m1 = lm(log(total_UPDRS) ~ poly(age, degree = 4) + .*age + .*sex, data = park_trn_data)
+summary(m1)
+eval_model(m1)
+
+park_trn_corrected = park_trn_data[hatvalues(m1) <= 2 * mean(hatvalues(m1)),]
+
+park_trn_corrected = fix_vif(park_trn_corrected)
+
+m1_corrected = lm(log(total_UPDRS) ~ poly(age, degree = 4) + .*age + .*sex, data = park_trn_corrected)
+eval_model(m1_corrected)
+
+park_trn_cooks_corrected = park_trn_corrected[cooks.distance(m1_corrected) > (4/length(resid(m1_corrected))), ]
+
+m1_corrected = lm(log(total_UPDRS) ~ poly(age, degree = 4) + .*age + .*sex, data = park_trn_cooks_corrected)
+eval_model(m1_corrected)
+
+head(park_trn_cooks_corrected)
+
+m1_corrected = lm(log(total_UPDRS) ~ .^2, data = data)
+eval_model(m1_corrected)
+
+predicted = predict(m1_corrected, park_tst_data)
+calc_rmse(exp(predicted), park_tst_data$total_UPDRS)
+plot_pva(predicted, log(park_tst_data$total_UPDRS))
+```
+
+
