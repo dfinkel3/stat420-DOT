@@ -424,7 +424,7 @@ The influential points were key in the selection of our model. We found between 
 
 Overfitting
 
-
+We also try different approaches where we got overfitted models. We fitted a model using the AIC backward with Motor__UPDRS variable included. The results were almost perfect. We got an adjusted R2 close to 1 and a low RMSE, but after where plotted the predicted values vs. the actual, we find out that the models were overfitted.
 
 Why we chose the metrics we did
 
