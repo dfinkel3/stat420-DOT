@@ -93,7 +93,7 @@ parkins_orig = parkins
 
 Let's take a quick look at the distributions of all of the predictors in the dataset:
 
-```{r message=FALSE, warning=FALSE}
+```{r fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(purrr)
 library(tidyr)
 library(ggplot2)
@@ -110,8 +110,8 @@ We see right away that the individuals range in age from about 35-90, with the m
 
 <br>
 
-There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some colinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. Figures 1-4 show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are colinear and should likely be removed, but predictor columns higly correlated with our response variable are likely to improve the model.
-```{r, eval=FALSE}
+There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. Figures 1-4 show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are collinear and should likely be removed, but predictor columns highly correlated with our response variable are likely to improve the model.
+```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
 ggpairs(columns = c(5, 4, 1, 2, 3), data=parkins)
 ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins)
@@ -119,13 +119,13 @@ ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins)
 ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins)
 ```
 
-Another method of measuring colinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than `10` imply a signficant collinearity. 
+Another method of measuring collinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than `10` imply a signficant collinearity. 
 ```{r, eval=FALSE}
 library(faraway)
 faraway::vif(parkins)
 ```
 
-An interesting property of VIF is that if two columns are colinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns colinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
+An interesting property of VIF is that if two columns are colinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
 ```{r}
 # Drop columns that have a vif > 5, starting with highest first
 fix_vif = function (data) {
@@ -140,7 +140,7 @@ fix_vif = function (data) {
 }
 ```
 
-Evaluating our measures of colinearity, `motor_UPDRS` was found to be highly colinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for calculating their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to reomve it from our model building process.
+Evaluating our measures of collinearity, `motor_UPDRS` was found to be highly collinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for calculating their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to remove it from our model building process.
 ```{r}
 parkins = subset(parkins, select = -c(motor_UPDRS))
 ```
@@ -154,8 +154,8 @@ To get a general idea of how effective the predictors would be, we used all the 
 additive_fit = lm(total_UPDRS ~ . , data = parkins)
 interaction_fit = lm(total_UPDRS ~ (.)^2 , data = parkins)
 ```
-- The fully additive model created a poorly fit model with an adjusted R^2 of `0.1739`. 
-- The interaction model gave a slight improvment, with an adjusted R^2 of `0.3199`.
+- The fully additive model created a poorly fit model with an adjusted R^2 of `r summary(additive_fit)$adj.r.squared`. 
+- The interaction model gave a slight improvement, with an adjusted R^2 of `r summary(interaction_fit)$adj.r.squared`.
 
 
 
@@ -325,7 +325,7 @@ new_fix_model2 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE, data
 ### Results
 
 colinearity matrix
-```{r, eval=TRUE, echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE}
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(GGally)
 ggpairs(columns = c(5, 4, 2, 3, 1), data=parkins_orig)
 ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins_orig)
@@ -360,16 +360,19 @@ PVAs
 
 
 
-
-
-
 ### Discussion
 
 Colinearity among columns
 
+After the results, we found the hight collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted R2 and highest  RMSE values. 
+
 Influential points
 
-overfitting
+The influential points were key in the selection of our model. We found between 166 to 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
+
+Overfitting
+
+
 
 Why we chose the metrics we did
 
