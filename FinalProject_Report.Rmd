@@ -18,44 +18,97 @@ urlcolor: cyan
 # STAT 420: Final Project
 ## Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Biomedical Voice Measurements of Individuals with Early Stage Parkinson’s Disease
 
+<br>
+
 ### Introduction
 
-Our chosen data file contains 22 attributes of 5875 observations. The attributes are:
+Telehealth is a growing field. Remote medical examinations offer several benefits over conventional on-site methods:
 
-- subject# - Integer that uniquely identifies each subject
-- age - Subject age
-- sex - Subject gender '0' - male, '1' - female
-- test_time - Time since recruitment into the trial. The integer part is the
-- number of days since recruitment.
-- motor_UPDRS - Clinician's motor UPDRS score, linearly interpolated
-- total_UPDRS - Clinician's total UPDRS score, linearly interpolated
-- Jitter(%),Jitter(Abs),Jitter:RAP,Jitter:PPQ5,Jitter:DDP 
-  - Several measures of variation in fundamental frequency
-- Shimmer,Shimmer(dB),Shimmer:APQ3,Shimmer:APQ5,Shimmer:APQ11,Shimmer:DDA
-  - Several measures of variation in amplitude
-- NHR,HNR - Two measures of ratio of noise to tonal components in the voice
-- RPDE - A nonlinear dynamical complexity measure
-- DFA - Signal fractal scaling exponent
-- PPE - A nonlinear measure of fundamental frequency variation
+- Secure and confidential: patients do not need to be seen at a specialists office
+- Convenience: patients can attend appointments from comfort of their own home
+- Increased access: patients are no longer restricted to geographically local physicians
+- Reduced cancellation: patients more consistently attend, more closely monitored
+- Many others
 
-The dataset was created in collaboration by Intel, Oxford and several medical centers to study patient Parkinson’s progression. 
+*Telemonitoring* is one form of telehealth in which information technology is used to monitor patients at a distance. The feasibility of such automated approaches calls for robust diagnoses to justify widespread adoption. This project aims to contribute to that goal. 
 
-The data set is provided by UCI, available here:  
-https://archive.ics.uci.edu/ml/datasets/Parkinsons+Telemonitoring
+Parkinson’s disease is a neurodegenerative disease characterized by stiffness and shakiness in motor functions of affected individuals. The disease tends to become more severe over time.
 
-Recently, machine learning has seen significantly more use in healthcare. Through this project and dataset, we seek to get a better understanding of just how and why machine learning pairs so well with medical data.
+A research collaboration between the University of Oxford, 10 medical centers in the US, and Intel Corporation organized a 6-month trial, recording a range of biomedical voice measurements from 42 people with early-stage Parkinson's disease. The effort produced a dataset with the following characteristics:
 
-We have successfully loaded the data into R. A preview of the data is below:
+- 5875 observations
+- 22 attributes:
+  - subject# - Integer that uniquely identifies each subject
+  - age - Subject age
+  - sex - Subject gender '0' - male, '1' - female
+  - test_time - Time since recruitment into the trial. The integer part is the
+  - number of days since recruitment.
+  - motor_UPDRS - Clinician's motor UPDRS score, linearly interpolated
+  - total_UPDRS - Clinician's total UPDRS score, linearly interpolated
+  - Jitter(%),Jitter(Abs),Jitter:RAP,Jitter:PPQ5,Jitter:DDP
+  - - Several measures of variation in fundamental frequency
+  - Shimmer,Shimmer(dB),Shimmer:APQ3,Shimmer:APQ5,Shimmer:APQ11,Shimmer:DDA
+  - - Several measures of variation in amplitude
+  - NHR,HNR - Two measures of ratio of noise to tonal components in the voice
+  - RPDE - A nonlinear dynamical complexity measure
+  - DFA - Signal fractal scaling exponent
+  - PPE - A nonlinear measure of fundamental frequency variation
+
+The dataset and a description of the aims of it’s collection are provided here: https://archive.ics.uci.edu/ml/datasets/Parkinsons+Telemonitoring
+
+A key attribute in the above set is `total_UPDRS`. The Unified Parkinson's Disease Rating Scale (UPDRS) is used to measure the degree of Parkinson’s in an individual - a higher score indicating a more severe case.
+
+This project aims to develop a model to predict `total_UPDRS` using the remaining attributes, effectively developing a model to predict the degree to which an individual is affected by Parkinson’s disease.
+
+<br>
+
+**Let's take a closer look and do a little bit of pre-processing on the data:**
+
+<br>
+
+First we load in our data:
 
 ```{r, message = FALSE}
 library(readr)
 parkins = read_csv("parkinsons_updrs.csv")
 ```
 
-The "\`subject#\`" column is a unique identifier we don't need for modeling, so we will remove it.
+<br>
+
+
+The "\`subject#\`" column is a unique identifier for each individual. Because our aim is to develop a model that is generally applicable, and not fit to specific individuals of this 42-person study, we will remove it.
+
 ```{r}
 parkins = subset(parkins, select = -c(`subject#`))
 ```
+
+<br>
+
+##### Variable Examination
+
+Let's take a quick look at the distributions of all of the predictors in the dataset:
+
+```{r message=FALSE, warning=FALSE}
+library(purrr)
+library(tidyr)
+library(ggplot2)
+
+parkins %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+```
+
+
+We see right away that the individuals range in age from about 35-90, with the majority of them falling between 55-80 years old.
+
+
+#### Insert more descriptions of data?
+
+
+
+##### Model Building Approach
 
 We will also create an initial 80/20 split of the dataset into a "training" and "testing" portion.
 ```{r}
@@ -65,6 +118,7 @@ park_trn_data = parkins[park_trn_idx, ]
 park_tst_data = parkins[-park_trn_idx, ]
 ```
 
+<br>
 
 ### Methods
 
