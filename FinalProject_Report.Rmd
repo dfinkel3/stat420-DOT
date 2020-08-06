@@ -148,6 +148,25 @@ plot_pva = function(predicted, actual){
   abline(0, 1, col = "dodgerblue")
 }
 
+
+
+
+#1 Model best model: two interaction model and not influential point 
+new_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data)
+mod_cook = cooks.distance(new_model)
+new_fix_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
+    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
+    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
+    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data, subset = mod_cook <= 4 / length(mod_cook))
+
+#Model2 with no collinearity not influential point 
+new_model1 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE,data = park_trn_data)
+mod_cook = cooks.distance(new_model1)
+new_fix_model2 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE, data = park_trn_data, subset = mod_cook <= 4 / length(mod_cook))
+
 ```
 
 
