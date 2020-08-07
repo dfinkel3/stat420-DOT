@@ -531,6 +531,27 @@ The influential points were key in the selection of our model. We found between 
 
 We also try different approaches where we got overfitted models. We fitted a model using the AIC backward with Motor__UPDRS variable included. The results were almost perfect. We got an adjusted R2 close to 1 and a low RMSE, but after where plotted the predicted values vs. the actual, we find out that the models were overfitted.
 
+<br>
+
+#### Checking linearity assumptions of the model
+
+Often, the assumptions of linear regression are stated as<sup>(1)[http://daviddalpiaz.github.io/appliedstats/model-diagnostics.html]</sup>,
+
+- Linearity - the response can be written as a linear combination of the predictors
+- Independence - the errors are independent
+- Normality - the distribution of the errors should follow a normal distribution
+- Equal Variance - the error variance is the same at any set of predictor values
+
+We can verify these assumptions using several formal tests and by examining plots using data from our models.
+
+We can assess linearity by examining the [fitted vs. residuals plot](#qq-plots). In order for linearity to be satisfied, the mean of the fitted vs. residuals plot should be 0 everywhere. We can see this is not the case, and so we conclude there are linearity issues with our model for this data.
+
+To assess the normality of the errors, we can look at the results of running the Shapiro-Wilk test and by examining the [Q-Q plot](#qq-plots). Looking at the Q-Q plot, the errors appear to follow a straight line, except for small deviation in the lower quartiles. From this, we can't see large issues in normality. However, as stated previously, the Shapiro-Wilk tests resulted in very small p-values, consistently, suggesting there are problems with the normality of our errors. Considering the null hypothesis of the Shapiro-Wilk test, $H_0$: homoscedasticity - the data is sampled from a normal distribution, and the low p-value, we can conclude that the data was not sampled from a normal distribution.
+
+To assess equal variance, we can look at the [fitted vs. residuals plot](#qq-plots), and also consider the results of the Breusch-Pagan test. The fitted vs. residuals plot does not show a roughly equal spread about the mean at all fitted values. This causes us to suspect there are isues with equal variance in our model. The Breusch-Pagan test confirms this suspicion, as mentioned earlier. The small p-value from our Breusch-Pagan test runs indicates that the null hypothesis of $H_0$: homoscedasticity should be rejected, causing us to conclude there are issues with this metric.
+
+<br>
+
 Why we chose the metrics we did
 
 (Comparison with model from paper)
