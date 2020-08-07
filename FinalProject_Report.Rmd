@@ -104,7 +104,7 @@ We see right away that the individuals range in age from about 35-90, with the m
 
 <br>
 
-There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. Figures 1-4 show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are collinear and should likely be removed, but predictor columns highly correlated with our response variable are likely to improve the model.
+There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. [Figures 1-4](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are collinear and should likely be removed, but predictor columns highly correlated with our response variable are likely to improve the model.
 ```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
 ggpairs(columns = c(5, 4, 1, 2, 3), data=parkins)
@@ -119,7 +119,7 @@ library(faraway)
 faraway::vif(parkins)
 ```
 
-An interesting property of VIF is that if two columns are colinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
+An interesting property of VIF is that if two columns are collinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
 ```{r}
 # Drop columns that have a vif > 5, starting with highest first
 fix_vif = function (data) {
@@ -191,7 +191,7 @@ for (i in 1:num_sims) {
   int_fit = lm(total_UPDRS ~ .^2 , data = park_trn_data)
   int_eval = eval_model(int_fit, park_tst_data)
   
-  # use VIF to remove colinear columns
+  # use VIF to remove collinear columns
   vif_rem_park_trn_data = fix_vif(park_trn_data)
   
   # train additive model with columns removed by VIF
@@ -245,7 +245,7 @@ QQplots
 
 Leverage and Influential Points
 
-Colinearity
+Collinearity
 
 
 
@@ -270,6 +270,8 @@ parkins %>%
     facet_wrap(~ key, scales = "free") +
     geom_histogram()
 ```
+
+<span id="collinearity-scatterplot-matrix"></span>
 
 ### Colinearity scatterplot matrix
 
@@ -332,15 +334,15 @@ plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
 
 ## Discussion
 
-Colinearity among columns
+### Colinearity among columns
 
 After the results, we found the hight collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted R2 and highest  RMSE values. 
 
-Influential points
+### Influential points
 
 The influential points were key in the selection of our model. We found between 166 to 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
 
-Overfitting
+### Overfitting
 
 We also try different approaches where we got overfitted models. We fitted a model using the AIC backward with Motor__UPDRS variable included. The results were almost perfect. We got an adjusted R2 close to 1 and a low RMSE, but after where plotted the predicted values vs. the actual, we find out that the models were overfitted.
 
