@@ -176,7 +176,7 @@ source('helpers.r', chdir = T)
 So, anyway, here's a simulation...
 ```{r message=FALSE, warning=FALSE}
 set.seed(420)
-num_sims = 1
+num_sims = 5
 num_metrics = 8
 
 additive_evals = rep(list(rep(0, num_sims)), num_metrics)
