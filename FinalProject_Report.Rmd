@@ -1,7 +1,7 @@
 ---
-title: "FinalProject_Report"
+title: "STAT 420: Final Project"
 author: "Daniil Finkel, Omar Boffil, Albert Ferguson"
-date: "August 2, 2020"
+date: "August 7, 2020"
 output:
   html_document:
     theme: readable
@@ -10,17 +10,12 @@ output:
 urlcolor: cyan
 ---
 
-#### Team DOT:
-- Daniilf2 - Daniil Finkel
-- Oboffil2 - Omar Boffil
-- Albertf2 - Albert Ferguson
 
-# STAT 420: Final Project
-## Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Biomedical Voice Measurements of Individuals with Early Stage Parkinson’s Disease
+<h2>Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Biomedical Voice Measurements of Individuals with Early Stage Parkinson’s Disease</h2>
 
 <br>
 
-### Introduction
+## Introduction
 
 Telehealth is a growing field. Remote medical examinations offer several benefits over conventional on-site methods:
 
@@ -65,9 +60,9 @@ This project aims to develop a model to predict `total_UPDRS` using the remainin
 
 <br>
 
-### Methods
+## Methods
 
-#### Exploratory Phase
+### Exploratory Phase
 
 Examining the dataset revealed it was already very clean. There were no empty values or obvious typos that needed to be fixed. However, looking over the column names and underlying data revealed some modifications needed to be made before modeling. 
 ```{r, message = FALSE}
@@ -88,7 +83,7 @@ parkins_orig = parkins
 ```
 <br>
 
-##### Variable Examination
+#### Variable Examination
 
 Let's take a quick look at the distributions of all of the predictors in the dataset:
 
@@ -146,7 +141,7 @@ parkins = subset(parkins, select = -c(motor_UPDRS))
 
 Evaluating the other columns did not show any strong linear correlations with `total_UPDRS`, unfortunately, so there was no early indication that an additive model would be enough. On the other hand, there also were no obvious polynomial relationships, so we felt confident we would not need to apply any polynomial transformations. Interactions were still a strong possibility that couldn't be ignored, especially with `sex` being a factor variable.
 
-#### Model Building Phase
+### Model Building Phase
 
 To get a general idea of how effective the predictors would be, we used all the rows and all the columns to train fully additive and interaction models. 
 ```{r}
@@ -157,12 +152,6 @@ interaction_fit = lm(total_UPDRS ~ (.)^2 , data = parkins)
 - The interaction model gave a slight improvement, with an adjusted R^2 of `r summary(interaction_fit)$adj.r.squared`.
 
 
-
-
-#### Helper functions:
-
-We first create a suite of helper functions to more easily evaluate our models.
-
 ```{r, message = FALSE, warning = FALSE, include = FALSE}
 
 library(lmtest)
@@ -172,10 +161,12 @@ source('helpers.r', chdir = T)
 ```
 
 
+<br>
+
 So, anyway, here's a simulation...
 ```{r message=FALSE, warning=FALSE}
 set.seed(420)
-num_sims = 5
+num_sims = 0
 num_metrics = 8
 
 additive_evals = rep(list(rep(0, num_sims)), num_metrics)
@@ -265,9 +256,9 @@ Model evaluation metrics
 
 
 
-### Results
+## Results
 
-#### Column Distributions
+### Column Distributions
 ```{r echo=TRUE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(purrr)
 library(tidyr)
@@ -280,7 +271,7 @@ parkins %>%
     geom_histogram()
 ```
 
-#### Colinearity scatterplot matrix
+### Colinearity scatterplot matrix
 
 ```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(GGally)
@@ -290,7 +281,7 @@ ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins_orig)
 ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins_orig)
 ```
 
-#### Table of best models, with metrics averaged over 5 data splits
+### Table of best models, with metrics averaged over 5 data splits
 
 ```{r echo = FALSE, fig.align = 'center'}
 
@@ -317,7 +308,7 @@ dframe = data.frame(
 knitr::kable(dframe)
 ```
 
-#### QQ Plots and Fitted vs Residuals
+### QQ Plots and Fitted vs Residuals
 ```{r, echo=FALSE, fig.align='center'}
 park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
 park_trn_data = parkins[park_trn_idx, ]
@@ -339,7 +330,7 @@ plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
 ```
 
 
-### Discussion
+## Discussion
 
 Colinearity among columns
 
@@ -359,7 +350,7 @@ Why we chose the metrics we did
 
 
 
-# Appendix
+## Appendix
 
 ```{r, comment = NA}
 # Embed helper functions into document
