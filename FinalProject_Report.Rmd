@@ -93,7 +93,7 @@ parkins_orig = parkins
 
 Let's take a quick look at the distributions of all of the predictors in the dataset:
 
-```{r fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+```{r eval = FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(purrr)
 library(tidyr)
 library(ggplot2)
@@ -233,7 +233,7 @@ plot_pva = function(predicted, actual){
 
 
 So, anyway, here's a simulation...
-```{r}
+```{r message=FALSE, warning=FALSE}
 set.seed(420)
 num_sims = 5
 num_metrics = 8
@@ -273,9 +273,10 @@ for (i in 1:num_sims) {
   
   
   # OB best model
-  ob_init_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, data = park_trn_data)
-  ob_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, data = park_trn_data, 
-              subset = non_influential_filter(ob_init_fit))
+  ob_init_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
+                   data = park_trn_data)
+  ob_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
+              data = park_trn_data, subset = non_influential_filter(ob_init_fit))
   ob_eval = eval_model(ob_fit, park_tst_data)
   
   # Removing Influential Points, Interaction model, and step back AIC
@@ -323,39 +324,25 @@ Model evaluation metrics
 
 
 
-```{r, echo = FALSE, message = FALSE, warning = FALSE, eval=FALSE}
-
-
-
-#1 Model best model: two interaction model and not influential point 
-new_model = lm(total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
-    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
-    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
-    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data)
-new_fix_model = lm( total_UPDRS ~ (age + sex + test_time + `Jitter(Abs)` + 
-    `Jitter:PPQ5` + `Jitter:DDP` + Shimmer + `Shimmer(dB)` + 
-    `Shimmer:APQ5` + `Shimmer:APQ11` + `Shimmer:DDA` + NHR + 
-    HNR + RPDE + DFA + PPE) ^ 2, data = park_trn_data, subset = non_influential_filter(new_model))
-
-#Model2 with no collinearity not influential point 
-new_model1 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE,data = park_trn_data)
-new_fix_model2 = lm(total_UPDRS ~ age + sex + test_time + RPDE + DFA + PPE, data = park_trn_data, subset = non_influential_filter(new_model1))
-
-```
-
-
-
 
 ### Results
 
-<<<<<<< HEAD
-colinearity matrix
-```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
-=======
+#### Column Distributions
+```{r echo=TRUE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+library(purrr)
+library(tidyr)
+library(ggplot2)
+
+parkins %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+```
+
 #### Colinearity scatterplot matrix
 
-```{r, eval=TRUE, echo = FALSE, fig.align = 'center', message = FALSE, warning = FALSE}
->>>>>>> ae60de2855edb1964de551c5b619265b32d245a6
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(GGally)
 ggpairs(columns = c(5, 4, 2, 3, 1), data=parkins_orig)
 ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins_orig)
