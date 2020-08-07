@@ -163,7 +163,10 @@ show_box_plot(
 
 <br>
 
-The first figure, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data, $a\epsilon Age | Q1 - a > 1.5 * IQR(Age)$. The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 100 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
+The first figure, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data:
+
+$$a \, \epsilon \, Age \, | \, Q1 - a > 1.5 * IQR(Age)$$
+The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 100 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
 
 <br>
 
