@@ -104,6 +104,69 @@ We see right away that the individuals range in age from about 35-90, with the m
 
 <br>
 
+In these distributions, we see some familiar shapes. HNR looks to most closely resemble a normal distribution amongst the set of predictors, with RPDE also appearing somewhat normal. These two metrics show a single, symmetric, bell-shaped curve. Several columns, including all Jitter metrics, all Shimmer metrics, and NHR show distributions with heavy right tails. 
+
+<br>
+
+We can also look at bot plots of these metrics, to see a more quantified breakdown of the distribution of values in each column:
+
+```{r message=FALSE, warning=FALSE}
+library(reshape)
+library(ggplot2)
+
+show_box_plot = function(frame) {
+  meltData = melt(frame)
+  p <- ggplot(meltData, aes(factor(variable), value)) 
+  p + geom_boxplot() + facet_wrap(~variable, scale="free")
+}
+
+show_box_plot(
+  data.frame(
+    age = parkins$`age`,
+    test_time = parkins$`test_time`,
+    motor_UPDRS = parkins$`motor_UPDRS`,
+    total_UPDRS = parkins$`total_UPDRS`,
+	  DFA = parkins$`DFA`
+  )
+)
+
+show_box_plot(
+  data.frame(
+    Jitter_Abs = parkins$`Jitter(Abs)`,
+    Jitter_RAP = parkins$`Jitter:RAP`,
+    Jitter_PPQ5 = parkins$`Jitter:PPQ5`,
+    Jitter_DDP = parkins$`Jitter:DDP`,
+    Shimmer = parkins$`Shimmer`
+  )
+)
+
+show_box_plot(
+  data.frame(
+ 	  Shimmer_dB = parkins$`Shimmer(dB)`,
+    Shimmer_APQ3 = parkins$`Shimmer:APQ3`,
+    Shimmer_APQ5 = parkins$`Shimmer:APQ5`,
+    Shimmer_APQ11 = parkins$`Shimmer:APQ11`,
+    Shimmer_DDA = parkins$`Shimmer:DDA`
+  )
+)
+
+show_box_plot(
+  data.frame(
+    NHR = parkins$`NHR`,
+    HNR = parkins$`HNR`,
+    RPDE = parkins$`RPDE`,
+    Jitter_Percent = parkins$`Jitter(%)`,
+    PPE = parkins$`PPE`
+  )
+)
+```
+
+<br>
+
+The first figure, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data, $a\epsilon Age | Q1 - a > 1.5 * IQR(Age)$. The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 100 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
+
+<br>
+
 There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. [Figures 1-4](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are collinear and should likely be removed, but predictor columns highly correlated with our response variable are likely to improve the model.
 ```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
@@ -148,8 +211,8 @@ To get a general idea of how effective the predictors would be, we used all the 
 additive_fit = lm(total_UPDRS ~ . , data = parkins)
 interaction_fit = lm(total_UPDRS ~ (.)^2 , data = parkins)
 ```
-- The fully additive model created a poorly fit model with an adjusted R^2 of `r summary(additive_fit)$adj.r.squared`. 
-- The interaction model gave a slight improvement, with an adjusted R^2 of `r summary(interaction_fit)$adj.r.squared`.
+- The fully additive model created a poorly fit model with an adjusted $R^2$ of `r summary(additive_fit)$adj.r.squared`. 
+- The interaction model gave a slight improvement, with an adjusted $R^2$ of `r summary(interaction_fit)$adj.r.squared`.
 
 
 ```{r, message = FALSE, warning = FALSE, include = FALSE}
@@ -166,7 +229,7 @@ source('helpers.r', chdir = T)
 So, anyway, here's a simulation...
 ```{r message=FALSE, warning=FALSE}
 set.seed(420)
-num_sims = 5
+num_sims = 1
 num_metrics = 8
 
 additive_evals = rep(list(rep(0, num_sims)), num_metrics)
@@ -336,11 +399,11 @@ plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
 
 ### Colinearity among columns
 
-After the results, we found the hight collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted R2 and highest  RMSE values. 
+After the results, we found the hight collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted $R^2$ and highest  RMSE values. 
 
 ### Influential points
 
-The influential points were key in the selection of our model. We found between 166 to 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
+The influential points were key in the selection of our model. We found between 166 and 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
 
 ### Overfitting
 
