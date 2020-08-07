@@ -11,7 +11,7 @@ urlcolor: cyan
 ---
 
 
-<h2>Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Biomedical Voice Measurements of Individuals with Early Stage Parkinson’s Disease</h2>
+<h2>Predicting UPDRS (Unified Parkinson Disease Rating Scale) from Bio-medical Voice Measurements of Individuals with Early Stage Parkinson’s Disease</h2>
 
 <br>
 
@@ -29,7 +29,7 @@ Telehealth is a growing field. Remote medical examinations offer several benefit
 
 Parkinson’s disease is a neurodegenerative disease characterized by stiffness and shakiness in motor functions of affected individuals. The disease tends to become more severe over time.
 
-A research collaboration between the University of Oxford, 10 medical centers in the US, and Intel Corporation organized a 6-month trial, recording a range of biomedical voice measurements from 42 people with early-stage Parkinson's disease. The effort produced a dataset with the following characteristics:
+A research collaboration between the University of Oxford, 10 medical centers in the US, and Intel Corporation organized a 6-month trial, recording a range of bio-medical voice measurements from 42 people with early-stage Parkinson's disease. The effort produced a dataset with the following characteristics:
 
 - 5875 observations
 - 22 attributes:
@@ -48,7 +48,7 @@ A research collaboration between the University of Oxford, 10 medical centers in
   - DFA - Signal fractal scaling exponent
   - PPE - A nonlinear measure of fundamental frequency variation
 
-The dataset and a description of the aims of it’s collection are provided here: https://archive.ics.uci.edu/ml/datasets/Parkinsons+Telemonitoring
+The dataset and a description of the aims of its collection are provided here: https://archive.ics.uci.edu/ml/datasets/Parkinsons+Telemonitoring
 
 A key attribute in the above set is `total_UPDRS`. The Unified Parkinson's Disease Rating Scale (UPDRS) is used to measure the degree of Parkinson’s in an individual - a higher score indicating a more severe case.
 
@@ -61,6 +61,8 @@ This project aims to develop a model to predict `total_UPDRS` using the remainin
 <br>
 
 ## Methods
+
+<br>
 
 ### Exploratory Phase
 
@@ -85,7 +87,7 @@ parkins_orig = parkins
 
 #### Variable Examination
 
-Let's take a quick look at the distributions of all of the predictors in the dataset:
+An evaluation of the distributions of all of the predictors in the dataset can be found in [Figure 1](#column-distributions):
 
 ```{r eval = FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(purrr)
@@ -104,9 +106,9 @@ We see right away that the individuals range in age from about 35-90, with the m
 
 <br>
 
-We can also look at bot plots of these metrics, to see a more quantified breakdown of the distribution of values in each column:
+We can also create box plots for these columns, to see a more quantified breakdown of the distribution of values within each. [Figures 2-5](#box-plots) show the results of these plots.
 
-```{r message=FALSE, warning=FALSE}
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
 library(reshape)
 library(ggplot2)
 
@@ -159,15 +161,14 @@ show_box_plot(
 
 <br>
 
-The first figure, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data:
+Figure 2, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data:
 
 $$a \, \epsilon \, Age \, | \, Q1 - a > 1.5 * IQR(Age)$$
-The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 10 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
+The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 10 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a further step - namely, in the correction of influential values.
 
 <br>
 
-Because the `Jitter` and `Shimmer` variables contain many variations, we assume they share fundamental characteristics and we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is a component in the calculation of the `total_UPDRS` score, we also expect these columns to be highly correlated with one another. [Figures 1-4](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Because collinearity can increase the variance of coefficient estimates, making estimates very sensitive to minor changes in our models, we will seek to eliminate collinearity from the set of predictors. By removing collinear relationships between our predictors, we presume we will be building more robust models.
-
+Because the `Jitter` and `Shimmer` variables contain many variations, we assume they share fundamental characteristics and we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is a component in the calculation of the `total_UPDRS` score, we also expect these columns to be highly correlated with one another. [Figures 6-9](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Because collinearity can increase the variance of coefficient estimates, making estimates very sensitive to minor changes in our models, we will seek to eliminate collinearity from the set of predictors. By removing collinear relationships between our predictors, we presume we will be building more robust models.
 
 ```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
@@ -177,31 +178,40 @@ ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins)
 ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins)
 ```
 
-Another method of measuring collinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than `10` imply a signficant collinearity. 
+<br>
+
+Another method of measuring collinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than `5` imply collinearity. 
 ```{r, eval=FALSE}
 library(faraway)
 faraway::vif(parkins)
 ```
 
-An interesting property of VIF is that if two columns are collinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `10` or `5`.
+<br>
+
+An interesting property of VIF is that if two columns are collinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than `5`.
 ```{r}
 # Drop columns that have a vif > 5, starting with highest first
 fix_vif = function (data) {
   newData = data
   max_vif = max(faraway::vif(newData))
   while (max_vif > 5) {
-    #print(summary(lm(total_UPDRS ~ ., data = newData))$adj)
-    newData = subset(newData, select = c(setdiff(names(newData), names(which.max(faraway::vif(newData))))))
+    newData = subset(newData, 
+                     select = c(setdiff(names(newData), names(which.max(faraway::vif(newData))))))
     max_vif = max(faraway::vif(newData))
   }
   newData
 }
 ```
 
+<br>
+
 Evaluating our measures of collinearity, `motor_UPDRS` was found to be highly collinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for calculating their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to remove it from our model building process.
 ```{r}
+# Remove the motor_UDPRS column from the dataset
 parkins = subset(parkins, select = -c(motor_UPDRS))
 ```
+
+<br>
 
 Evaluating the other columns did not show any strong linear correlations with `total_UPDRS`, unfortunately, so there was no early indication that an additive model would be enough. On the other hand, there also were no obvious polynomial relationships, so we felt confident we would not need to apply any polynomial transformations. Interactions were still a strong possibility that couldn't be ignored, especially with `sex` being a factor variable.
 
@@ -212,8 +222,8 @@ To get a general idea of how effective the predictors would be, we used all the 
 additive_fit = lm(total_UPDRS ~ . , data = parkins)
 interaction_fit = lm(total_UPDRS ~ (.)^2 , data = parkins)
 ```
-- The fully additive model created a poorly fit model with an adjusted $R^2$ of `r summary(additive_fit)$adj.r.squared`. 
-- The interaction model gave a slight improvement, with an adjusted $R^2$ of `r summary(interaction_fit)$adj.r.squared`.
+- The fully additive model created a poorly fit model with an adjusted $R^2$ of ``r summary(additive_fit)$adj.r.squared``. 
+- The interaction model gave a slight improvement, with an adjusted $R^2$ of ``r summary(interaction_fit)$adj.r.squared``.
 
 
 ```{r, message = FALSE, warning = FALSE, include = FALSE}
@@ -237,7 +247,7 @@ additive_evals = rep(list(rep(0, num_sims)), num_metrics)
 interaction_evals = rep(list(rep(0, num_sims)), num_metrics)
 additive_vif_evals = rep(list(rep(0, num_sims)), num_metrics)
 interaction_vif_evals = rep(list(rep(0, num_sims)), num_metrics)
-ob_fit_evals = rep(list(rep(0, num_sims)), num_metrics)
+overfit_evals = rep(list(rep(0, num_sims)), num_metrics)
 back_aic_evals = rep(list(rep(0, num_sims)), num_metrics)
 back_bic_evals = rep(list(rep(0, num_sims)), num_metrics)
 
@@ -267,12 +277,12 @@ for (i in 1:num_sims) {
   int_vif_eval = eval_model(int_vif_fit, park_tst_data)
   
   
-  # OB best model
-  ob_init_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
+  # model that "overfit"
+  overfit_init_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
                    data = park_trn_data)
-  ob_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
-              data = park_trn_data, subset = non_influential_filter(ob_init_fit))
-  ob_eval = eval_model(ob_fit, park_tst_data)
+  overfit_fit = lm(total_UPDRS ~ ( . - `Jitter(%)` - `Jitter:RAP` - `Shimmer:APQ3`) ^ 2, 
+              data = park_trn_data, subset = non_influential_filter(overfit_init_fit))
+  overfit_eval = eval_model(overfit_fit, park_tst_data)
   
   # Removing Influential Points, Interaction model, and step back AIC
   back_aic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
@@ -282,8 +292,8 @@ for (i in 1:num_sims) {
   # Removing Influential Points, Interaction model, and step back BIC
   n = length(resid(int_vif_fit))
   back_bic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
-                         subset = non_influential_filter(int_vif_fit)), direction = 'backward', 
-                      trace = 0, k = log(n))
+                         subset = non_influential_filter(int_vif_fit)), 
+                      direction = 'backward', trace = 0, k = log(n))
   back_bic_eval = eval_model(back_bic_fit, park_tst_data)
   
   for (j in 1:num_metrics) {
@@ -291,7 +301,7 @@ for (i in 1:num_sims) {
     interaction_evals[[j]][i] = int_eval[j]
     additive_vif_evals[[j]][i] = add_vif_eval[j]
     interaction_vif_evals[[j]][i] = int_vif_eval[j]
-    ob_fit_evals[[j]][i] = ob_eval[j]
+    overfit_evals[[j]][i] = overfit_eval[j]
     back_aic_evals[[j]][i] = back_aic_eval[j]
     back_bic_evals[[j]][i] = back_bic_eval[j]
   }
@@ -300,30 +310,16 @@ for (i in 1:num_sims) {
 
 ```
 
-
-
-
-Interaction Models
-
-QQplots
-
-Leverage and Influential Points
-
-Collinearity
-
-
-
-
-
-Model evaluation metrics
-
-
-
+<br>
 
 ## Results
 
-### Column Distributions
-```{r echo=TRUE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+<br>
+
+<span id="column-distributions"></span>
+
+#### Column Distributions
+```{r echo=FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Figure 1: Column Distributions"}
 library(purrr)
 library(tidyr)
 library(ggplot2)
@@ -342,45 +338,130 @@ In these distributions, we see some familiar shapes. HNR looks to most closely r
 
 <br>
 
-### Colinearity scatterplot matrix
+<span id="box-plots"></span>
 
-```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
+#### Box Plots
+
+```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Figure 2: Box plots of age, test_time, motor_UPDRS, total_UPDRS, and DFA"}
+library(reshape)
+library(ggplot2)
+
+show_box_plot = function(frame) {
+  meltData = melt(frame)
+  p <- ggplot(meltData, aes(variable, value)) 
+  p + geom_boxplot() + facet_wrap(~variable, scale="free")
+}
+show_box_plot(
+  data.frame(
+    age = parkins_orig$`age`,
+    test_time = parkins_orig$`test_time`,
+    motor_UPDRS = parkins_orig$`motor_UPDRS`,
+    total_UPDRS = parkins_orig$`total_UPDRS`,
+	  DFA = parkins_orig$`DFA`
+  )
+)
+```
+<br>
+```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Figure 3: Box plots of Jitter_Abs, Jitter_RAP, Jitter_PPQ5, Jitter_DDP, and Shimmer"}
+show_box_plot(
+  data.frame(
+    Jitter_Abs = parkins_orig$`Jitter(Abs)`,
+    Jitter_RAP = parkins_orig$`Jitter:RAP`,
+    Jitter_PPQ5 = parkins_orig$`Jitter:PPQ5`,
+    Jitter_DDP = parkins_orig$`Jitter:DDP`,
+    Shimmer = parkins_orig$`Shimmer`
+  )
+)
+```
+<br>
+```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Figure 4: Box plots of Shimmer_dB, Shimmer_APQ3, Shimmer_APQ5, Shimmer_APQ11, and Shimmer_DDA"}
+show_box_plot(
+  data.frame(
+ 	  Shimmer_dB = parkins_orig$`Shimmer(dB)`,
+    Shimmer_APQ3 = parkins_orig$`Shimmer:APQ3`,
+    Shimmer_APQ5 = parkins_orig$`Shimmer:APQ5`,
+    Shimmer_APQ11 = parkins_orig$`Shimmer:APQ11`,
+    Shimmer_DDA = parkins_orig$`Shimmer:DDA`
+  )
+)
+```
+<br>
+```{r, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE, fig.align='center', fig.cap="Figure 5: Box plots of NHR, HNR, RPDE, Jitter_Percent, and PPE"}
+show_box_plot(
+  data.frame(
+    NHR = parkins_orig$`NHR`,
+    HNR = parkins_orig$`HNR`,
+    RPDE = parkins_orig$`RPDE`,
+    Jitter_Percent = parkins_orig$`Jitter(%)`,
+    PPE = parkins_orig$`PPE`
+  )
+)
+```
+
+
+<br>
+
+<span id="collinearity-scatterplot-matrix"></span>
+
+#### Colinearity scatterplot matrix
+
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE, fig.cap="Figure 6: Collinearity between total_UPDRS, motor_UPDRS, sex, test_time, and age"}
 library(GGally)
 ggpairs(columns = c(5, 4, 2, 3, 1), data=parkins_orig)
+```
+<br>
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE, fig.cap="Figure 7: Collinearity between total_UPDRS, NHR, HNR, RPDE, DFA, and PPE"}
+library(GGally)
 ggpairs(columns = c(5, 17, 18, 19, 20, 21), data=parkins_orig)
+```
+<br>
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE, fig.cap="Figure 8: Collinearity between total_UPDRS, Jitter(%), Jitter(Abs), Jitter:RAP, Jitter:PPQ5, and Jitter:DDP"}
+library(GGally)
 ggpairs(columns = c(5, 6, 7, 8, 9, 10), data=parkins_orig)
+```
+<br>
+```{r eval=TRUE, echo=FALSE, fig.align='center', fig.height=5, fig.width=10, message=FALSE, warning=FALSE, fig.cap="Figure 9: Collinearity between total_UPDRS, Shimmer, Shimmer(db), Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, and Shimmer:DDA"}
+library(GGally)
 ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins_orig)
 ```
 
-### Table of best models, with metrics averaged over 5 data splits
+<br>
 
-```{r echo = FALSE, fig.align = 'center'}
+<span id="table-of-models"></span>
+
+#### Table of best models, with metrics averaged over 5 data splits
+
+```{r echo = FALSE, fig.align = 'center', fig.cap="Table 1: Comparison of models trained on data"}
 
 dframe = data.frame(
   model = c("additive_full", "additive_vif", "interaction", "interaction_vif", "ob_best_model", "back_aic_interaction", "back_bic_interaction"),
   
-  b_pagan = round(c(mean(unlist(additive_evals[1])), mean(unlist(additive_vif_evals[1])), mean(unlist(interaction_evals[1])), mean(unlist(interaction_vif_evals[1])), mean(unlist(ob_fit_evals[1])), mean(unlist(back_aic_evals[1])), mean(unlist(back_bic_evals[1]))), 3),
+  # b_pagan = round(c(mean(unlist(additive_evals[1])), mean(unlist(additive_vif_evals[1])), mean(unlist(interaction_evals[1])), mean(unlist(interaction_vif_evals[1])), mean(unlist(overfit_evals[1])), mean(unlist(back_aic_evals[1])), mean(unlist(back_bic_evals[1]))), 3),
   
-  shap_wilk = round(c(mean(unlist(additive_evals[2])), mean(unlist(additive_vif_evals[2])), mean(unlist(interaction_evals[2])), mean(unlist(interaction_vif_evals[2])), mean(unlist(ob_fit_evals[2])), mean(unlist(back_aic_evals[2])), mean(unlist(back_bic_evals[2]))), 3),
+  # shap_wilk = round(c(mean(unlist(additive_evals[2])), mean(unlist(additive_vif_evals[2])), mean(unlist(interaction_evals[2])), mean(unlist(interaction_vif_evals[2])), mean(unlist(overfit_evals[2])), mean(unlist(back_aic_evals[2])), mean(unlist(back_bic_evals[2]))), 3),
   
-  rmse_loocv = round(c(mean(unlist(additive_evals[3])), mean(unlist(additive_vif_evals[3])), mean(unlist(interaction_evals[3])), mean(unlist(interaction_vif_evals[3])), mean(unlist(ob_fit_evals[3])), mean(unlist(back_aic_evals[3])), mean(unlist(back_bic_evals[3]))), 3),
+  rmse_loocv = round(c(mean(unlist(additive_evals[3])), mean(unlist(additive_vif_evals[3])), mean(unlist(interaction_evals[3])), mean(unlist(interaction_vif_evals[3])), mean(unlist(overfit_evals[3])), mean(unlist(back_aic_evals[3])), mean(unlist(back_bic_evals[3]))), 3),
   
-  rmse_trn = round(c(mean(unlist(additive_evals[4])), mean(unlist(additive_vif_evals[4])), mean(unlist(interaction_evals[4])), mean(unlist(interaction_vif_evals[4])), mean(unlist(ob_fit_evals[4])), mean(unlist(back_aic_evals[4])), mean(unlist(back_bic_evals[4]))), 3),
+  rmse_trn = round(c(mean(unlist(additive_evals[4])), mean(unlist(additive_vif_evals[4])), mean(unlist(interaction_evals[4])), mean(unlist(interaction_vif_evals[4])), mean(unlist(overfit_evals[4])), mean(unlist(back_aic_evals[4])), mean(unlist(back_bic_evals[4]))), 3),
   
-  rmse_tst = round(c(mean(unlist(additive_evals[5])), mean(unlist(additive_vif_evals[5])), mean(unlist(interaction_evals[5])), mean(unlist(interaction_vif_evals[5])), mean(unlist(ob_fit_evals[5])), mean(unlist(back_aic_evals[5])), mean(unlist(back_bic_evals[5]))), 3),
+  rmse_tst = round(c(mean(unlist(additive_evals[5])), mean(unlist(additive_vif_evals[5])), mean(unlist(interaction_evals[5])), mean(unlist(interaction_vif_evals[5])), mean(unlist(overfit_evals[5])), mean(unlist(back_aic_evals[5])), mean(unlist(back_bic_evals[5]))), 3),
   
-  mae_tst = round(c(mean(unlist(additive_evals[8])), mean(unlist(additive_vif_evals[8])), mean(unlist(interaction_evals[8])), mean(unlist(interaction_vif_evals[8])), mean(unlist(ob_fit_evals[8])), mean(unlist(back_aic_evals[8])), mean(unlist(back_bic_evals[8]))), 3),
+  mae_tst = round(c(mean(unlist(additive_evals[8])), mean(unlist(additive_vif_evals[8])), mean(unlist(interaction_evals[8])), mean(unlist(interaction_vif_evals[8])), mean(unlist(overfit_evals[8])), mean(unlist(back_aic_evals[8])), mean(unlist(back_bic_evals[8]))), 3),
   
-  adj_r2 = round(c(mean(unlist(additive_evals[6])), mean(unlist(additive_vif_evals[6])), mean(unlist(interaction_evals[6])), mean(unlist(interaction_vif_evals[6])), mean(unlist(ob_fit_evals[6])), mean(unlist(back_aic_evals[6])), mean(unlist(back_bic_evals[6]))), 3),
+  adj_r2 = round(c(mean(unlist(additive_evals[6])), mean(unlist(additive_vif_evals[6])), mean(unlist(interaction_evals[6])), mean(unlist(interaction_vif_evals[6])), mean(unlist(overfit_evals[6])), mean(unlist(back_aic_evals[6])), mean(unlist(back_bic_evals[6]))), 3),
   
-  num_pred = round(c(mean(unlist(additive_evals[7])), mean(unlist(additive_vif_evals[7])), mean(unlist(interaction_evals[7])), mean(unlist(interaction_vif_evals[7])), mean(unlist(ob_fit_evals[7])), mean(unlist(back_aic_evals[7])), mean(unlist(back_bic_evals[7]))), 1)
+  num_pred = round(c(mean(unlist(additive_evals[7])), mean(unlist(additive_vif_evals[7])), mean(unlist(interaction_evals[7])), mean(unlist(interaction_vif_evals[7])), mean(unlist(overfit_evals[7])), mean(unlist(back_aic_evals[7])), mean(unlist(back_bic_evals[7]))), 1)
 )
 
 knitr::kable(dframe)
 ```
 
-### QQ Plots and Fitted vs Residuals
-```{r, echo=FALSE, fig.align='center'}
+<br>
+
+<span id="qq-plots"></span>
+
+#### QQ Plots and Fitted vs Residuals
+```{r, echo=FALSE, fig.align='center', fig.cap="Figure 10: Fitted vs Residuals and QQ plot of the best model"}
 park_trn_idx  = sample(nrow(parkins), size = trunc(0.80 * nrow(parkins)))
 park_trn_data = parkins[park_trn_idx, ]
 park_tst_data = parkins[-park_trn_idx, ]
@@ -395,23 +476,28 @@ back_aic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data,
 diagnostic_plots(back_aic_fit)
 ```
 
+<br>
+
+<span id="pvas"></span>
+
 #### Predicted vs Actual plot
-```{r, echo=FALSE, fig.align='center'}
+```{r, echo=FALSE, fig.align='center', fig.cap="Figure 11: Predicted vs Actuals of best model evaluated on test data"}
 plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
 ```
 
+<br>
 
 ## Discussion
 
-### Colinearity among columns
+#### Colinearity among columns
 
-After the results, we found the hight collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted $R^2$ and highest  RMSE values. 
+After the results, we found the high collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted $R^2$ and highest  RMSE values. 
 
-### Influential points
+#### Influential points
 
 The influential points were key in the selection of our model. We found between 166 and 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
 
-### Overfitting
+#### Overfitting
 
 We also try different approaches where we got overfitted models. We fitted a model using the AIC backward with Motor__UPDRS variable included. The results were almost perfect. We got an adjusted R2 close to 1 and a low RMSE, but after where plotted the predicted values vs. the actual, we find out that the models were overfitted.
 
