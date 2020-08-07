@@ -162,11 +162,13 @@ show_box_plot(
 The first figure, with the exception of the Age plot, shows plots that look very good at first glance. The Age plot shows a single outlier, a value smaller than the first quartile by more than 1.5 times the *interquartile range* of the data:
 
 $$a \, \epsilon \, Age \, | \, Q1 - a > 1.5 * IQR(Age)$$
-The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 100 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
+The remaining 3 sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is Jitter_Percent, the outliers stretch to up to 10 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a futher step - namely, in the correction of influential values.
 
 <br>
 
-There are also many columns with `Jitter` or `Shimmer` in their names, so we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is factored into the `total_UPDRS` score, they are expected to be highly correlated with each other. [Figures 1-4](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Predictor columns highly correlated with other predictors are collinear and should likely be removed, but predictor columns highly correlated with our response variable are likely to improve the model.
+Because the `Jitter` and `Shimmer` variables contain many variations, we assume they share fundamental characteristics and we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is a component in the calculation of the `total_UPDRS` score, we also expect these columns to be highly correlated with one another. [Figures 1-4](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Because collinearity can increase the variance of coefficient estimates, making estimates very sensitive to minor changes in our models, we will seek to eliminate collinearity from the set of predictors. By removing collinear relationships between our predictors, we presume we will be building more robust models.
+
+
 ```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
 ggpairs(columns = c(5, 4, 1, 2, 3), data=parkins)
