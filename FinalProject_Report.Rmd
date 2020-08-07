@@ -104,10 +104,6 @@ We see right away that the individuals range in age from about 35-90, with the m
 
 <br>
 
-In these distributions, we see some familiar shapes. HNR looks to most closely resemble a normal distribution amongst the set of predictors, with RPDE also appearing somewhat normal. These two metrics show a single, symmetric, bell-shaped curve. Several columns, including all Jitter metrics, all Shimmer metrics, and NHR show distributions with heavy right tails. 
-
-<br>
-
 We can also look at bot plots of these metrics, to see a more quantified breakdown of the distribution of values in each column:
 
 ```{r message=FALSE, warning=FALSE}
@@ -116,7 +112,7 @@ library(ggplot2)
 
 show_box_plot = function(frame) {
   meltData = melt(frame)
-  p <- ggplot(meltData, aes(factor(variable), value)) 
+  p <- ggplot(meltData, aes(variable, value)) 
   p + geom_boxplot() + facet_wrap(~variable, scale="free")
 }
 
@@ -337,7 +333,12 @@ parkins %>%
     geom_histogram()
 ```
 
+<br>
+
+In these distributions, we see some familiar shapes. HNR looks to most closely resemble a normal distribution amongst the set of predictors, with RPDE also appearing somewhat normal. These two metrics show a single, symmetric, bell-shaped curve. Several columns, including all Jitter metrics, all Shimmer metrics, and NHR show distributions with heavy right tails. 
 <span id="collinearity-scatterplot-matrix"></span>
+
+<br>
 
 ### Colinearity scatterplot matrix
 
