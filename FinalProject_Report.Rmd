@@ -503,6 +503,9 @@ int_vif_fit = lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data)
 back_aic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
                          subset = non_influential_filter(int_vif_fit)), direction = 'backward', trace = 0)
 
+int_vif_fit_2 = lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
+                         subset = non_influential_filter(int_vif_fit))
+
 diagnostic_plots(back_aic_fit)
 ```
 
@@ -519,13 +522,24 @@ plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
 
 ## Discussion
 
-#### Colinearity among columns
+<span id=”bp-sw-description”></span>
+Evaluating Table 1, shows the averaged metrics computed across all the models. Even though the Breusch-Pagan test statistic and Shapiro-Wilk test statistic were collected for each model, they were always very close to zero. None of our various attempts were able to bring their values above `0.05`, or even `0.01`. Because of this, they were not included in the Table.
 
-After the results, we found the high collinearity that exists between the predictors: Jitter(%),  Jitter(Abs), Jitter:RAP,  Jitter:PPQ5, Jitter:DDP,  Shimmer, Shimmer(dB),  Shimmer:APQ3, Shimmer:APQ5, Shimmer:APQ11, Shimmer:DDA and the response total_UPDRS. The collinearity that exists in our dataset could be a cause of low precision of the estimate coefficients. Also, it makes us suspected about the p-values obtained in models where these variables were present together. But after we simulate a model with no collinearity variables, we got lower results in the Adjusted $R^2$ and highest  RMSE values. 
+In order to determine what our “best” model was, we couldn’t look at only a single metric. This is best shown with the “overfit” model. Looking at just its LOOCV RMSE, or just its adjusted $R^2$, would make it seem like the best model overall. However, looking at the RMSE on the test set returns the worst results compared to all the other models. Very good training metrics with very bad test metrics are the hallmark for an overfit model. If we were to weigh any individual metric more than the others, test RMSE would probably be the most informative for determining the best predictive model. A low test RMSE would imply a model that is able to generalize to new data, which is what one would want from a predictive model.
+
+Our best models were found to be the interaction models with collinear columns removed by VIF, influential points removed, and backward stepwise elimination (`back_aic_interaction` and `back_bic_interaction`). Performing the elimination with AIC or BIC returned nearly identical metrics, however, since the BIC model had $10$ fewer predictors on average, we chose it to be our best model. A close contender was the `interaction_vif` model, that wasn’t chosen because it used more predictors, leading to a slightly lower adjusted $R^2$. Because the metrics were so close between these models, it shows us that the VIF approach already does a great job of removing collinearity, and stepwise elimination wasn’t able to provide a drastic improvement. Overall, these models had a combination of the lowest test and train RMSEs, and the highest adjusted $R^2$, without evidence of overfitting.
+
+A surprising result was that just removing collinearity did not lead to a significantly better result for our models. The `additive_vif` and `interaction_vif` models produced results that were actually slightly worse than their collinear counterparts. In practice, however, it is often the case that better predictive models can be obtained by including more columns, even if there is some collinearity. We suspect that, even though VIF may have found two columns to be highly collinear, there may have been some signal contained within both columns that a linear regression model could extract to become a better predictor.
+
+Though Table 1 doesn’t include models where the only processing step applied was removing the influential points, doing so was found to improve our test set RMSEs across the board. Those results “influenced” us to remove the influential points when training our best `back_aic_interaction` and `back_bic_interaction` models.
+
+<br>
 
 #### Influential points
 
-The influential points were key in the selection of our model. We found between 166 and 200 influential points, which is, on average, the 3.9 % of training data set between the different models we fitted. The results obtained were substantially better in the models without influential points.
+Removing influential points was key in the selection of our model. Using Cook's Distance, and the heuristic discussed in class, an influential point being a point which has Cook's Distance more than 4 times the length of the dataset, as the method, we found about 4% of training data set was influential in different models we fitted. Successively fitting new models using the cleaned data set produced substatianlly better results.
+
+<br>
 
 #### Overfitting
 
@@ -534,6 +548,7 @@ We also try different approaches where we got overfitted models. We fitted a mod
 <br>
 
 #### Checking linearity assumptions of the model
+
 
 Often, the assumptions of linear regression are stated as<sup>(1)[http://daviddalpiaz.github.io/appliedstats/model-diagnostics.html]</sup>,
 
@@ -546,15 +561,15 @@ We can verify these assumptions using several formal tests and by examining plot
 
 We can assess linearity by examining the [fitted vs. residuals plot](#qq-plots). In order for linearity to be satisfied, the mean of the fitted vs. residuals plot should be 0 everywhere. We can see this is not the case, and so we conclude there are linearity issues with our model for this data.
 
-To assess the normality of the errors, we can look at the results of running the Shapiro-Wilk test and by examining the [Q-Q plot](#qq-plots). Looking at the Q-Q plot, the errors appear to follow a straight line, except for small deviation in the lower quartiles. From this, we can't see large issues in normality. However, as stated previously, the Shapiro-Wilk tests resulted in very small p-values, consistently, suggesting there are problems with the normality of our errors. Considering the null hypothesis of the Shapiro-Wilk test, $H_0$: homoscedasticity - the data is sampled from a normal distribution, and the low p-value, we can conclude that the data was not sampled from a normal distribution.
+To assess the normality of the errors, we can look at the results of running the Shapiro-Wilk test and by examining the [Q-Q plot](#qq-plots). Looking at the Q-Q plot, the errors appear to follow a straight line, except for small deviation in the lower quantiles. From this, we can't see large issues in normality. However, as stated [previously](#bp-sw-description), the Shapiro-Wilk tests resulted in very small p-values, consistently, suggesting there are problems with the normality of our errors. Considering the null hypothesis of the Shapiro-Wilk test, $H_0$: homoscedasticity - the data is sampled from a normal distribution, and the low p-value, we can conclude that the data was not sampled from a normal distribution.
 
-To assess equal variance, we can look at the [fitted vs. residuals plot](#qq-plots), and also consider the results of the Breusch-Pagan test. The fitted vs. residuals plot does not show a roughly equal spread about the mean at all fitted values. This causes us to suspect there are isues with equal variance in our model. The Breusch-Pagan test confirms this suspicion, as mentioned earlier. The small p-value from our Breusch-Pagan test runs indicates that the null hypothesis of $H_0$: homoscedasticity should be rejected, causing us to conclude there are issues with this metric.
+To assess equal variance, we can look at the [fitted vs. residuals plot](#qq-plots), and also consider the results of the Breusch-Pagan test. The fitted vs. residuals plot does not show a roughly equal spread about the mean at all fitted values. This causes us to suspect there are issues with equal variance in our model. The Breusch-Pagan test confirms this suspicion. The [small p-value](#bp-sw-description) from our Breusch-Pagan test runs indicates that the null hypothesis of $H_0$: homoscedasticity should be rejected, causing us to conclude there are issues with this metric.
 
 <br>
 
-Why we chose the metrics we did
+#### Discussion of Predicted vs. Actual Plot
 
-(Comparison with model from paper)
+The predicted vs. actual plot shows the effect of the model selected and compares it against the test dataset. We clearly can see that we have room for improvement because the point is not perfectly following the regression line. Also, we can find in our model that we have predictions out of the chart for values less than ten, and others around the 30 range are far from the actual values or overestimating it, which makes us suspicious of how well this model can be useful for predictions.  Also, we noticed that the majority of the values after 30 underestimate the actual values, especially in values over 50. On average, this was the best model we found in our research, but the Predicted vs. Actual plot confirms that this model is not the best when we want to make predictions.
 
 <br>
 
@@ -563,6 +578,10 @@ Why we chose the metrics we did
 <span id="helper-functions"></span>
 
 #### A1: Helper Functions
+
+Below, we have included functions utilized throughout this project. We have included functions to perform various statistical tests and evaluate the models developed throughout the report.
+
+<br>
 
 ```{r, comment = NA, echo = FALSE, fig.cap="A1: Helper Functions in R"}
 # Embed helper functions into document
