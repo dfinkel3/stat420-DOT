@@ -1,6 +1,5 @@
 ---
 title: "STAT 420: Final Project"
-author: "Daniil Finkel, Omar Boffil, Albert Ferguson"
 date: "August 7, 2020"
 output:
   html_document:
