@@ -247,7 +247,7 @@ source('helpers.r', chdir = T)
 
 <br>
 
-After a signficant amount of trial and error, a simulation was created to randomly split the dataset into a training ($80$%) and test ($20$%) set $10$ times, training and evaluating models we found to be interesting. These models were:
+After a significant amount of trial and error, a simulation was created to randomly split the dataset into a training ($80$%) and test ($20$%) set $10$ times, training and evaluating models we found to be interesting. These models were:
 
 - A full additive model
 - A full additive model, after collinear columns removed by VIF
@@ -257,7 +257,7 @@ After a signficant amount of trial and error, a simulation was created to random
 - Backward stepwise elimination by **BIC**, of full interaction model, after collinear columns removed by VIF, and influential points removed
 - An "overfit" model that was found to produce relatively high adjusted $R^2$
 
-The average evaluation metrics for each of these models across all $5$ simulations are shown in [Table 1](#table-of-models).
+The average evaluation metrics for each of these models across all $10$ simulations are shown in [Table 1](#table-of-models).
 
 
 ```{r message=FALSE, warning=FALSE}
@@ -498,15 +498,14 @@ park_tst_data = parkins[-park_trn_idx, ]
 
 vif_rem_park_trn_data = fix_vif(park_trn_data)
 int_vif_fit = lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data)
-  int_vif_eval = eval_model(int_vif_fit, park_tst_data)
+int_vif_eval = eval_model(int_vif_fit, park_tst_data)
 
-back_aic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
-                         subset = non_influential_filter(int_vif_fit)), direction = 'backward', trace = 0)
+n = length(resid(int_vif_fit))
+back_bic_fit = step(lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
+                         subset = non_influential_filter(int_vif_fit)), 
+                    direction = 'backward', trace = 0, k = log(n))
 
-int_vif_fit_2 = lm(total_UPDRS ~ .^2 , data = vif_rem_park_trn_data, 
-                         subset = non_influential_filter(int_vif_fit))
-
-diagnostic_plots(back_aic_fit)
+diagnostic_plots(back_bic_fit)
 ```
 
 <br>
@@ -515,12 +514,14 @@ diagnostic_plots(back_aic_fit)
 
 #### Predicted vs Actual plot
 ```{r, echo=FALSE, fig.align='center', fig.cap="Figure 11: Predicted vs Actuals of best model evaluated on test data"}
-plot_pva(predict(back_aic_fit, park_tst_data), park_tst_data$total_UPDRS)
+plot_pva(predict(back_bic_fit, park_tst_data), park_tst_data$total_UPDRS)
 ```
 
 <br>
 
 ## Discussion
+
+#### Model Training Results
 
 <span id=”bp-sw-description”></span>
 Evaluating Table 1, shows the averaged metrics computed across all the models. Even though the Breusch-Pagan test statistic and Shapiro-Wilk test statistic were collected for each model, they were always very close to zero. None of our various attempts were able to bring their values above `0.05`, or even `0.01`. Because of this, they were not included in the Table.
@@ -537,13 +538,7 @@ Though Table 1 doesn’t include models where the only processing step applied w
 
 #### Influential points
 
-Removing influential points was key in the selection of our model. Using Cook's Distance, and the heuristic discussed in class, an influential point being a point which has Cook's Distance more than 4 times the length of the dataset, as the method, we found about 4% of training data set was influential in different models we fitted. Successively fitting new models using the cleaned data set produced substatianlly better results.
-
-<br>
-
-#### Overfitting
-
-We also try different approaches where we got overfitted models. We fitted a model using the AIC backward with Motor__UPDRS variable included. The results were almost perfect. We got an adjusted R2 close to 1 and a low RMSE, but after where plotted the predicted values vs. the actual, we find out that the models were overfitted.
+Removing influential points was key in the selection of our model. Using Cook's Distance, and the heuristic discussed in class, an "influential" point being a point which has Cook's Distance more than 4 divided by the length of the dataset, we found on average about 4% of training data was influential for the models we fit. We were able to improve our models and prevent overfitting by removing these influential points.
 
 <br>
 
@@ -573,6 +568,12 @@ The predicted vs. actual plot shows the effect of the model selected and compare
 
 <br>
 
+#### Conclusion
+
+In conclusion, we were able to build a model with an average adjusted $R^2$ of $0.264$ and an average test RMSE of $9.836$. This is by no means the best possible model that could be created, we suspect a different machine learning approach may be more suitable, however it may be that being able to have a prediction of a `total_UPDRS` score with an expected error of about $10$ points might still be useful for predicting the degree of early stage Parkinson’s.
+
+<br>
+
 ## Appendix
 
 <span id="helper-functions"></span>
@@ -588,3 +589,12 @@ Below, we have included functions utilized throughout this project. We have incl
 writeLines(readLines('helpers.r'))
 ```
 
+<br>
+
+#### Names of Team DOT members
+
+- Daniilf2 - Daniil Finkel
+- Oboffil2 - Omar Boffil
+- Albertf2 - Albert Ferguson
+
+<br>
