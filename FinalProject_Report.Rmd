@@ -545,7 +545,7 @@ Removing influential points was key in the selection of our model. Using Cook's 
 #### Checking linearity assumptions of the model
 
 
-Often, the assumptions of linear regression are stated as<sup>(1)[http://daviddalpiaz.github.io/appliedstats/model-diagnostics.html]</sup>,
+Often, the assumptions of linear regression are stated as<sup>[1](http://daviddalpiaz.github.io/appliedstats/model-diagnostics.html)</sup>,
 
 - Linearity - the response can be written as a linear combination of the predictors
 - Independence - the errors are independent
