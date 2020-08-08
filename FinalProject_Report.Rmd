@@ -213,7 +213,7 @@ fix_vif = function (data) {
 
 Evaluating our measures of collinearity, `motor_UPDRS` was found to be highly collinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for predicting their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to remove it from our model building process. 
 
-``{r}
+```{r}
 # Remove the motor_UDPRS column from the dataset
 parkins = subset(parkins, select = -c(motor_UPDRS))
 ```
