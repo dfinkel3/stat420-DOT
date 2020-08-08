@@ -85,6 +85,10 @@ parkins_orig = parkins
 
 An evaluation of the distributions of all of the predictors in the dataset can be found in [Figure 1](#column-distributions).
 
+The distributions can be generated with the following code:
+
+<br>
+
 ```{r eval = FALSE, fig.height=5, fig.width=10, message=FALSE, warning=FALSE}
 library(purrr)
 library(tidyr)
@@ -97,13 +101,17 @@ parkins %>%
     geom_histogram()
 ```
 
+<br>
+
 These distributions show some familiar shapes. `HNR` looks to most closely resemble a normal distribution amongst the set of predictors, with `RPDE` also appearing somewhat normal. These two metrics show a single, symmetric, bell-shaped curve. Several columns, including all Jitter metrics, all Shimmer metrics, and `NHR` show distributions with heavy right tails. 
 
 We also see that the individuals range in `age` from about 35-90, with the majority of them falling between 55-80 years old. This is worth noting as it implies any model built likely won't generalize well outside those age ranges.
 
-<br>
-
 We can also create box plots for these columns, to see a more quantified breakdown of the distribution of values within each. [Figures 2-5](#box-plots) show the results of these plots.
+
+The box plots were generated with the following code:
+
+<br>
 
 ```{r, eval=FALSE, message=FALSE, warning=FALSE}
 library(reshape)
@@ -163,9 +171,11 @@ Figure 2, with the exception of the `age` plot, shows plots that look very good 
 $$a \, \epsilon \, age \, | \, Q1 - a > 1.5 * IQR(age)$$
 The remaining three sets of plots show much more interesting data. All three sets of plots show a slim interquartile range, with dozens of outliers. In some cases, the most extreme of which is `Jitter(%)`, the outliers stretch to up to 10 times the interquartile range of the data. We anticipate the scale and large number of outliers in a majority of these columns will be problematic during model building. However, because we have no reason to think these data points were collected in error, we will defer correction of these data points to a further step - namely, in the correction of influential values.
 
-<br>
-
 Because the `Jitter` and `Shimmer` variables contain many variations, we assume they share fundamental characteristics and we suspect there will be some collinearity among them. In addition, since the `motor_UPDRS` score is a component in the calculation of the `total_UPDRS` score, we also expect these columns to be highly correlated with one another. [Figures 6-9](#collinearity-scatterplot-matrix) show scatterplots of all the columns against our response, `total_UPDRS`, as well as with columns where we suspect collinearity. Because collinearity can increase the variance of coefficient estimates, making estimates very sensitive to minor changes in our models, we will seek to eliminate collinearity from the set of predictors. By removing collinear relationships between our predictors, we presume we will be building more robust models.
+
+We can generate the scatterplots using the following code:
+
+<br>
 
 ```{r eval=FALSE, fig.height=5, fig.width=10}
 library(GGally)
@@ -177,16 +187,15 @@ ggpairs(columns = c(5, 11, 12, 13, 14, 15, 16), data=parkins)
 
 <br>
 
-Another method of measuring collinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than $5$ imply collinearity. 
-```{r, eval=FALSE}
-library(faraway)
-faraway::vif(parkins)
-```
+Another method of measuring collinearity is through the variance inflation factors (VIF) of the individual predictor columns with each other, where values larger than $5$ imply collinearity. An interesting property of VIF is that if two columns are collinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than $5$.
+
+We have added a function to address issues with collinearity below:
 
 <br>
 
-An interesting property of VIF is that if two columns are collinear, their VIF values will be very large. However, if one of those columns is removed and the VIF is recalculated, the leftover column's VIF value will drop significantly if there are no other columns collinear with it. With this, we can take an iterative approach and repeatedly remove the column with the largest VIF until the resulting columns all have values less than $5$.
 ```{r}
+library(faraway)
+
 # Drop columns that have a vif > 5, starting with highest first
 fix_vif = function (data) {
   newData = data
@@ -202,15 +211,16 @@ fix_vif = function (data) {
 
 <br>
 
-Evaluating our measures of collinearity, `motor_UPDRS` was found to be highly collinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for predicting their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to remove it from our model building process.
-```{r}
+Evaluating our measures of collinearity, `motor_UPDRS` was found to be highly collinear with `total_UPDRS`, as expected. It makes sense that knowledge of a subject's `motor_UPDRS` score would be incredibly informative for predicting their total score, but a predictive model likely wouldn't be needed if that information was already available, so we chose to remove it from our model building process. 
+
+``{r}
 # Remove the motor_UDPRS column from the dataset
 parkins = subset(parkins, select = -c(motor_UPDRS))
 ```
 
 <br>
 
-Evaluating the other columns did not show any strong linear correlations with `total_UPDRS`, unfortunately, so there was no early indication that an additive model would be enough. On the other hand, there also were no obvious polynomial relationships, so we felt confident we would not need to apply any polynomial transformations. Interactions were still a strong possibility that couldn't be ignored.
+Evaluating the other columns did not show any strong linear correlations with `total_UPDRS`, unfortunately, so there was no early indication that an additive model would be enough. On the other hand, there also were no obvious polynomial relationships, so we felt confident we would not need to apply any polynomial transformations. Interactions were still a strong possibility that couldn't be ignored. We tried several tranformations of both the response and predictors, including `log`, `sin/cos`, and low order polynomials, but none of these attempts resulted in models with acceptable test RMSE values.
 
 ### Model Building Phase
 
@@ -257,8 +267,16 @@ After a significant amount of trial and error, a simulation was created to rando
 - Backward stepwise elimination by **BIC**, of full interaction model, after collinear columns removed by VIF, and influential points removed
 - An "overfit" model that was found to produce relatively high adjusted $R^2$
 
+<br>
+
 The average evaluation metrics for each of these models across all $10$ simulations are shown in [Table 1](#table-of-models).
 
+
+<br>
+
+The code used to develop and gather statistics for our models is included below:
+
+<br>
 
 ```{r message=FALSE, warning=FALSE}
 set.seed(420)
